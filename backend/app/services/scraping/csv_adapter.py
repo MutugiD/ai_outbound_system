@@ -15,7 +15,7 @@ from typing import Any, ClassVar, Optional, Union
 from fastapi import UploadFile
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
-from app.security_utils import safe_filename
+
 
 logger = logging.getLogger(__name__)
 
@@ -161,26 +161,24 @@ class CSVAdapter(BaseLeadSourceAdapter):
     # Only files within these directories can be opened via _read_from_path.
     _SAFE_DIRS: ClassVar[list[str]] = list(
         {
-            os.environ.get(
-                "SAFE_CSV_DIR",
-                os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads")),
+            os.path.realpath(
+                os.environ.get(
+                    "SAFE_CSV_DIR",
+                    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads")),
+                )
             ),
-            os.path.normpath(os.path.join(os.sep, "tmp")),  # temp files in tests
+            os.path.realpath(os.path.normpath(os.path.join(os.sep, "tmp"))),  # temp files in tests
         }
     )
 
     async def _read_from_path(self, path: str, delimiter: str, encoding: str) -> list[RawLead]:
-        # Path-traversal prevention: resolve the path and verify it sits inside an
-        # allowed directory.  By joining the resolved directory with a sanitised
-        # basename we construct a *new* path string that CodeQL recognises as
-        # built from trusted components (hardcoded allowed dirs + safe_filename).
+        # Path-traversal prevention: resolve the candidate and ensure it is
+        # contained by one of the canonical allowed root directories.
         resolved = os.path.realpath(path)
-        if not any(resolved.startswith(sd) for sd in self._SAFE_DIRS):
+        is_allowed = any(os.path.commonpath([resolved, safe_dir]) == safe_dir for safe_dir in self._SAFE_DIRS)
+        if not is_allowed:
             raise ValueError(f"Path outside allowed directories: {resolved!r}")
-        safe_dir = os.path.dirname(resolved)
-        safe_base = safe_filename(resolved)
-        safe_file_path = os.path.join(safe_dir, safe_base)
-        with open(safe_file_path, newline="", encoding=encoding) as fh:
+        with open(resolved, newline="", encoding=encoding) as fh:
             content = fh.read()
         return self._parse_csv_string(content, delimiter)
 
