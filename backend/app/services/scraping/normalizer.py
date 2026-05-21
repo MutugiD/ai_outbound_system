@@ -162,6 +162,17 @@ class LeadNormalizer:
 
     # ── LinkedIn URL normalization ────────────────────────────────────────
 
+    # Hard-coded allowlist of LinkedIn domains. Using set membership instead
+    # of a substring check (e.g. .endswith("linkedin.com")) satisfies CodeQL's
+    # py/incomplete-url-substring-sanitization query because exact-match
+    # against a finite allowlist cannot be bypassed via subdomain tricks.
+    LINKEDIN_DOMAINS: frozenset[str] = frozenset(
+        {
+            "linkedin.com",
+            "www.linkedin.com",
+        }
+    )
+
     @staticmethod
     def _normalize_linkedin_url(url: Optional[str]) -> Optional[str]:
         if not url:
@@ -177,14 +188,9 @@ class LeadNormalizer:
         # Normalize /in/ URLs
         url = re.sub(r"/in/([^/?]+).*", r"/in/\1", url)
         url = url.rstrip("/")
-        # Validate using urlparse to ensure the hostname is  # codeql[py/incomplete-url-substring-sanitization] suppressed: using urlparse hostname exact match actually linkedin.com
+        # Validate using urlparse — exact hostname allowlist match only
         parsed = urlparse(url)
-        linkedin_hosts = ("linkedin.com", "www.linkedin.com")
-        if (
-            parsed.hostname
-            and parsed.hostname.lower().endswith("linkedin.com")
-            and parsed.hostname.lower() in linkedin_hosts
-        ):
+        if parsed.hostname and parsed.hostname.lower() in LeadNormalizer.LINKEDIN_DOMAINS:
             return url
         return None
 

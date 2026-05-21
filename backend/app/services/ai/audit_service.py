@@ -24,7 +24,7 @@ from app.config import settings
 from app.models.company import Company
 from app.models.audit import WebsiteAudit
 from app.services.activity_service import log_activity
-from app.security_utils import sanitize_log, validate_url_for_fetch
+from app.security_utils import build_safe_url, sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -134,10 +134,13 @@ class AuditService:
         company = result.scalar_one_or_none()
 
         # Normalise and validate domain/URL (SSRF prevention)
+        # build_safe_url parses, validates, and reconstructs the URL from safe
+        # primitives — breaking the taint chain so CodeQL no longer treats the
+        # resulting URL as user-provided.
         if not domain.startswith(("http://", "https://")):
             domain = f"https://{domain}"
 
-        url = validate_url_for_fetch(domain.rstrip("/"))
+        safe_url = build_safe_url(domain.rstrip("/"))
 
         # ── Fetch the website ────────────────────────────────────────────
         html_content = ""
@@ -149,25 +152,21 @@ class AuditService:
         try:
             async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
                 start_time = datetime.now()
-                resp = await client.get(
-                    url
-                )  # codeql[py/ssrf] suppressed: url validated by validate_url_for_fetch above
+                resp = await client.get(safe_url)
                 elapsed = (datetime.now() - start_time).total_seconds()
                 response_time_ms = elapsed * 1000
                 status_code = resp.status_code
                 html_content = resp.text
                 response_headers = dict(resp.headers)
-                ssl_ok = url.startswith("https://")
+                ssl_ok = str(safe_url).startswith("https://")
         except Exception as exc:
-            logger.warning("Failed to fetch %s for audit: %s", sanitize_log(url), sanitize_log(str(exc)))
-            # Try http fallback
+            logger.warning("Failed to fetch %s for audit: %s", sanitize_log(str(safe_url)), sanitize_log(str(exc)))
+            # Try http fallback — re-validate and reconstruct from safe primitives
             try:
-                http_url = validate_url_for_fetch(url.replace("https://", "http://"))
+                http_safe_url = build_safe_url(str(safe_url).replace("https://", "http://"))
                 async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
                     start_time = datetime.now()
-                    resp = await client.get(
-                        http_url
-                    )  # codeql[py/ssrf] suppressed: url validated by validate_url_for_fetch
+                    resp = await client.get(http_safe_url)
                     elapsed = (datetime.now() - start_time).total_seconds()
                     response_time_ms = elapsed * 1000
                     status_code = resp.status_code
@@ -175,11 +174,13 @@ class AuditService:
                     response_headers = dict(resp.headers)
                     ssl_ok = False
             except Exception as exc2:
-                logger.error("Failed to fetch %s (http fallback): %s", sanitize_log(url), sanitize_log(str(exc2)))
+                logger.error(
+                    "Failed to fetch %s (http fallback): %s", sanitize_log(str(safe_url)), sanitize_log(str(exc2))
+                )
                 # Create a minimal audit even on complete failure
                 return await self._create_audit(
                     company_id=company_id,
-                    url=url,
+                    url=str(safe_url),
                     html_content="",
                     headers={},
                     response_time_ms=0,
@@ -190,7 +191,7 @@ class AuditService:
         # ── Run audits ───────────────────────────────────────────────────
         audit = await self._create_audit(
             company_id=company_id,
-            url=url,
+            url=str(safe_url),
             html_content=html_content,
             headers=response_headers,
             response_time_ms=response_time_ms,

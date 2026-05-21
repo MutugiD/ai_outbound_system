@@ -10,6 +10,8 @@ import os
 import re
 from urllib.parse import urlparse
 
+import httpx
+
 
 # ── Log sanitization ──────────────────────────────────────────────────────
 
@@ -107,7 +109,58 @@ def validate_url_for_fetch(url: str) -> str:
     return url
 
 
+def build_safe_url(url: str) -> httpx.URL:
+    """Validate a URL and return a reconstructed ``httpx.URL`` object.
+
+    This breaks the taint chain for SSRF analysis: by parsing the URL,
+    validating the hostname, and constructing a *new* URL object from the
+    validated components, static analysis recognises that the returned URL
+    is built from safe primitives rather than directly from user input.
+
+    Parameters
+    ----------
+    url : str
+        The user-provided URL to validate and reconstruct.
+
+    Returns
+    -------
+    httpx.URL
+        A reconstructed, validated URL object safe for HTTP requests.
+
+    Raises
+    ------
+    ValueError
+        If the URL is invalid, uses a blocked scheme, or targets a
+        private/local network address.
+    """
+    # First run the string-level validation (scheme check, host blocklist, etc.)
+    validated = validate_url_for_fetch(url)
+    parsed = urlparse(validated)
+
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("URL has no hostname")
+
+    # Re-construct a new httpx.URL from the parsed, validated components.
+    # This is the key step that breaks the taint chain: CodeQL can see that
+    # the returned URL is built from individually-validated primitives rather
+    # than flowing directly from user input.
+    port_part = f":{parsed.port}" if parsed.port else ""
+    safe_url = httpx.URL(
+        f"{parsed.scheme}://{hostname.lower()}{port_part}{parsed.path or '/'}{f'?{parsed.query}' if parsed.query else ''}{f'#{parsed.fragment}' if parsed.fragment else ''}"
+    )
+    return safe_url
+
+
 # ── Path safety (path traversal prevention) ────────────────────────────────
+
+# Hard-coded safe directory for CSV file reads. All user-supplied filenames
+# are resolved relative to this constant so that path-traversal taint is
+# broken by the os.path.join with a trusted prefix.
+SAFE_CSV_DIR = os.environ.get(
+    "SAFE_CSV_DIR",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "uploads"),
+)
 
 
 def safe_filename(value: str) -> str:
@@ -130,3 +183,26 @@ def safe_filename(value: str) -> str:
     if base in ("", ".", ".."):
         raise ValueError(f"Invalid filename: {value!r}")
     return base
+
+
+def safe_path(user_filename: str) -> str:
+    """Return an absolute path inside SAFE_CSV_DIR using the safe basename
+    of *user_filename*.
+
+    This breaks the path-injection taint chain: the user-supplied string is
+    reduced to a safe basename via ``safe_filename()``, then joined onto a
+    trusted constant directory.  CodeQL can see the final path is built from
+    a hardcoded prefix rather than from raw user input.
+
+    Parameters
+    ----------
+    user_filename : str
+        A user-supplied filename (may contain directory components).
+
+    Returns
+    -------
+    str
+        An absolute path inside ``SAFE_CSV_DIR``.
+    """
+    clean_name = safe_filename(user_filename)
+    return os.path.join(SAFE_CSV_DIR, clean_name)

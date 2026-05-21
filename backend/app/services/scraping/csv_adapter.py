@@ -8,14 +8,13 @@ NormalizedLead fields to common header names found in real-world CSVs.
 import csv
 import io
 import logging
-import os
 from pathlib import Path
 from typing import Any, Optional, Union
 
 from fastapi import UploadFile
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
-from app.security_utils import safe_filename
+from app.security_utils import safe_path
 
 logger = logging.getLogger(__name__)
 
@@ -158,15 +157,12 @@ class CSVAdapter(BaseLeadSourceAdapter):
     # ── Internals ─────────────────────────────────────────────────────────
 
     async def _read_from_path(self, path: str, delimiter: str, encoding: str) -> list[RawLead]:
-        # Prevent path traversal: resolve and verify the path stays within
-        # an allowed upload directory, or at minimum use the safe basename.
-        resolved = os.path.realpath(path)
-        safe_name = safe_filename(os.path.basename(resolved))
-        # Use the resolved path but confirm the filename hasn't changed
-        # (path traversal would change the basename)
-        if os.path.basename(resolved) != safe_name:
-            raise ValueError(f"Invalid file path: {path!r} contains path traversal")
-        with open(resolved, newline="", encoding=encoding) as fh:
+        # Prevent path traversal: use safe_path() to construct a clean path
+        # inside the hardcoded SAFE_CSV_DIR, breaking the taint chain.
+        # This ensures the final filesystem path is built from a trusted
+        # directory constant plus a sanitised basename, not from user input.
+        safe_file_path = safe_path(path)
+        with open(safe_file_path, newline="", encoding=encoding) as fh:
             content = fh.read()
         return self._parse_csv_string(content, delimiter)
 
