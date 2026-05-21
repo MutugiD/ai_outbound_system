@@ -1,0 +1,68 @@
+services:
+  # ── API Server ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+      - SYNC_DATABASE_URL=postgresql://outbound:outbound@db:5432/outbound_os
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=minio
+      - S3_SECRET_KEY=minio123
+      - S3_BUCKET=outbound-os
+      - DEBUG=true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+
+  # ── PostgreSQL + pgvector ──────────────────────────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=outbound_os
+      - POSTGRES_USER=outbound
+      - POSTGRES_PASSWORD=outbound
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outbound -d outbound_os"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+  # ── MinIO (S3-compatible object storage) ────────────────────────────
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+    volumes:
+      - miniodata:/data
+    command: server /data --console-address ":9001"
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

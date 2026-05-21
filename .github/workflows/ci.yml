@@ -1,0 +1,156 @@
+# ============================================================
+# AI Outbound OS — CI Pipeline
+# ============================================================
+# Runs on every push and PR to main.
+# Steps: lint -> test backend -> build frontend -> security scan
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ----------------------------------------------------------
+  # Backend: Lint
+  # ----------------------------------------------------------
+  backend-lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          pip install -e ".[dev]"
+          pip install ruff
+
+      - name: Ruff lint
+        working-directory: backend
+        run: ruff check app/ tests/ --config pyproject.toml
+
+      - name: Ruff format check
+        working-directory: backend
+        run: ruff format --check app/ tests/ --config pyproject.toml
+
+  # ----------------------------------------------------------
+  # Backend: Unit Tests
+  # ----------------------------------------------------------
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    needs: backend-lint
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: outbound_os_test
+          POSTGRES_USER: outbound
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -e ".[dev]"
+
+      - name: Create test .env
+        working-directory: backend
+        run: |
+          cat > .env <<EOF
+          APP_ENV=test
+          DEBUG=true
+          DATABASE_URL=postgresql+asyncpg://outbound:testpassword@localhost:5432/outbound_os_test
+          REDIS_URL=redis://localhost:6379/1
+          SECRET_KEY=test-secret-key-for-ci-only
+          S3_ENDPOINT_URL=http://localhost:9000
+          S3_ACCESS_KEY=minio
+          S3_SECRET_KEY=minio123
+          S3_BUCKET=outbound-os-test
+          EOF
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          APP_ENV: test
+          DATABASE_URL: postgresql+asyncpg://outbound:testpassword@localhost:5432/outbound_os_test
+          REDIS_URL: redis://localhost:6379/1
+          SECRET_KEY: test-secret-key-for-ci-only
+        run: pytest tests/ -v --tb=short --ignore=tests/test_pipeline_e2e.py
+
+  # ----------------------------------------------------------
+  # Frontend: Build Check
+  # ----------------------------------------------------------
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  # ----------------------------------------------------------
+  # Security: Secret Scan
+  # ----------------------------------------------------------
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified
