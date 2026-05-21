@@ -226,10 +226,31 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
         except Exception as exc:
             logger.debug("trafilatura extraction failed: %s", exc)
 
-        # Regex fallback: strip HTML tags
-        text = re.sub(r"<script[^>]*>.*?</script\s*>", "", html, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<style[^>]*>.*?</style\s*>", "", text, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<[^>]+>", " ", text)
+        # HTML tag stripping fallback (CodeQL: regex cannot fully sanitize HTML)
+        # Use html.parser for robust tag removal instead of regex
+        from html.parser import HTMLParser
+
+        class _Stripper(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self._text = []
+                self._skip = False
+
+            def handle_starttag(self, tag, attrs):
+                if tag in ("script", "style"):
+                    self._skip = True
+
+            def handle_endtag(self, tag):
+                if tag in ("script", "style"):
+                    self._skip = False
+
+            def handle_data(self, data):
+                if not self._skip:
+                    self._text.append(data)
+
+        stripper = _Stripper()
+        stripper.feed(html)
+        text = " ".join(stripper._text)
         text = re.sub(r"\s+", " ", text).strip()
         return text
 

@@ -177,7 +177,7 @@ class LeadNormalizer:
         # Normalize /in/ URLs
         url = re.sub(r"/in/([^/?]+).*", r"/in/\1", url)
         url = url.rstrip("/")
-        # Validate using urlparse to ensure the hostname is actually linkedin.com
+        # Validate using urlparse to ensure the hostname is  # codeql[py/incomplete-url-substring-sanitization] suppressed: using urlparse hostname exact match actually linkedin.com
         parsed = urlparse(url)
         linkedin_hosts = ("linkedin.com", "www.linkedin.com")
         if (
