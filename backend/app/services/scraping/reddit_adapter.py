@@ -14,6 +14,7 @@ from urllib.parse import quote_plus
 import httpx
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
+from app.security_utils import sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -204,11 +205,11 @@ class RedditAdapter(BaseLeadSourceAdapter):
         try:
             resp = await client.get(url)
             if resp.status_code != 200:
-                logger.warning("Reddit returned %d for %s", resp.status_code, url)
+                logger.warning("Reddit returned %d for %s", resp.status_code, sanitize_log(url))
                 return []
             data = resp.json()
         except (httpx.HTTPError, ValueError) as exc:
-            logger.warning("Reddit request failed: %s", exc)
+            logger.warning("Reddit request failed: %s", sanitize_log(str(exc)))
             return []
 
         results: list[RawLead] = []

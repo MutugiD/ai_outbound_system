@@ -14,6 +14,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
+from app.security_utils import sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
             try:
                 resp = await client.get(url, follow_redirects=True)
                 if resp.status_code != 200:
-                    logger.debug("WebsiteAdapter: %s returned %d", url, resp.status_code)
+                    logger.debug("WebsiteAdapter: %s returned %d", sanitize_log(url), resp.status_code)
                     continue
 
                 html = resp.text
@@ -135,7 +136,7 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
 
                 # Only include pages with meaningful content
                 if len(clean_text.strip()) < 50:
-                    logger.debug("WebsiteAdapter: skipping %s (too little text)", url)
+                    logger.debug("WebsiteAdapter: skipping %s (too little text)", sanitize_log(url))
                     continue
 
                 raw = RawLead(
@@ -158,10 +159,10 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
                 results.append(raw)
 
             except (httpx.HTTPError, Exception) as exc:
-                logger.warning("WebsiteAdapter error fetching %s: %s", url, exc)
+                logger.warning("WebsiteAdapter error fetching %s: %s", sanitize_log(url), sanitize_log(str(exc)))
                 continue
 
-        logger.info("WebsiteAdapter crawled %d pages for %s", len(results), parsed_domain)
+        logger.info("WebsiteAdapter crawled %d pages for %s", len(results), sanitize_log(parsed_domain))
         return results
 
     async def extract(self, raw: RawLead) -> NormalizedLead:
@@ -226,8 +227,8 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
             logger.debug("trafilatura extraction failed: %s", exc)
 
         # Regex fallback: strip HTML tags
-        text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<script[^>]*>.*?</script\s*>", "", html, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<style[^>]*>.*?</style\s*>", "", text, flags=re.DOTALL | re.IGNORECASE)
         text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"\s+", " ", text).strip()
         return text

@@ -31,6 +31,7 @@ from app.services.enrichment.base_adapter import run_with_fallback
 from app.services.enrichment.apollo_adapter import ApolloAdapter
 from app.services.enrichment.hunter_adapter import HunterAdapter
 from app.services.enrichment.builtwith_adapter import BuiltWithAdapter
+from app.security_utils import sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,9 @@ class EnrichmentService:
             )
             await self._update_contact(contact, contact_result.get("data", {}))
         except Exception as exc:
-            logger.error("Contact enrichment failed for lead %s: %s", lead_id, exc)
+            logger.error(
+                "Contact enrichment failed for lead %s: %s", sanitize_log(str(lead_id)), sanitize_log(str(exc))
+            )
             summary["steps"]["contact_enrichment"] = {"error": str(exc)}
             errors.append(f"contact: {exc}")
 
@@ -120,7 +123,9 @@ class EnrichmentService:
                 )
                 await self._update_company(company, company_result.get("data", {}))
             except Exception as exc:
-                logger.error("Company enrichment failed for lead %s: %s", lead_id, exc)
+                logger.error(
+                    "Company enrichment failed for lead %s: %s", sanitize_log(str(lead_id)), sanitize_log(str(exc))
+                )
                 summary["steps"]["company_enrichment"] = {"error": str(exc)}
                 errors.append(f"company: {exc}")
         else:
@@ -139,7 +144,9 @@ class EnrichmentService:
                     confidence=tech_result.get("confidence", 0),
                 )
             except Exception as exc:
-                logger.error("Tech stack detection failed for lead %s: %s", lead_id, exc)
+                logger.error(
+                    "Tech stack detection failed for lead %s: %s", sanitize_log(str(lead_id)), sanitize_log(str(exc))
+                )
                 summary["steps"]["tech_stack"] = {"error": str(exc)}
                 errors.append(f"tech_stack: {exc}")
         else:
@@ -156,7 +163,9 @@ class EnrichmentService:
                     self.db.add(contact)
                     await self.db.flush()
             except Exception as exc:
-                logger.error("Email verification failed for lead %s: %s", lead_id, exc)
+                logger.error(
+                    "Email verification failed for lead %s: %s", sanitize_log(str(lead_id)), sanitize_log(str(exc))
+                )
                 summary["steps"]["email_verification"] = {"error": str(exc)}
                 errors.append(f"email_verify: {exc}")
 

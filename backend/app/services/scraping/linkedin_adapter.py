@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
+from app.security_utils import sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ class LinkedInJobsAdapter(BaseLeadSourceAdapter):
         limit = query.get("limit", 50)
 
         search_url = self._build_search_url(keywords, location, time_window, remote)
-        logger.info("LinkedInAdapter: searching %s", search_url)
+        logger.info("LinkedInAdapter: searching %s", sanitize_log(search_url))
 
         try:
             job_cards = await self._scrape_search_page(search_url)

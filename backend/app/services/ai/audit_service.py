@@ -24,6 +24,7 @@ from app.config import settings
 from app.models.company import Company
 from app.models.audit import WebsiteAudit
 from app.services.activity_service import log_activity
+from app.security_utils import sanitize_log, validate_url_for_fetch
 
 logger = logging.getLogger(__name__)
 
@@ -132,11 +133,11 @@ class AuditService:
         result = await self.db.execute(select(Company).where(Company.id == company_id))
         company = result.scalar_one_or_none()
 
-        # Normalise domain
+        # Normalise and validate domain/URL (SSRF prevention)
         if not domain.startswith(("http://", "https://")):
             domain = f"https://{domain}"
 
-        url = domain.rstrip("/")
+        url = validate_url_for_fetch(domain.rstrip("/"))
 
         # ── Fetch the website ────────────────────────────────────────────
         html_content = ""
@@ -156,10 +157,10 @@ class AuditService:
                 response_headers = dict(resp.headers)
                 ssl_ok = url.startswith("https://")
         except Exception as exc:
-            logger.warning("Failed to fetch %s for audit: %s", url, exc)
+            logger.warning("Failed to fetch %s for audit: %s", sanitize_log(url), sanitize_log(str(exc)))
             # Try http fallback
             try:
-                http_url = url.replace("https://", "http://")
+                http_url = validate_url_for_fetch(url.replace("https://", "http://"))
                 async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
                     start_time = datetime.now()
                     resp = await client.get(http_url)
@@ -170,7 +171,7 @@ class AuditService:
                     response_headers = dict(resp.headers)
                     ssl_ok = False
             except Exception as exc2:
-                logger.error("Failed to fetch %s (http fallback): %s", url, exc2)
+                logger.error("Failed to fetch %s (http fallback): %s", sanitize_log(url), sanitize_log(str(exc2)))
                 # Create a minimal audit even on complete failure
                 return await self._create_audit(
                     company_id=company_id,

@@ -11,6 +11,7 @@ Applies consistent transformations:
 
 import re
 from typing import Optional
+from urllib.parse import urlparse
 
 import phonenumbers
 
@@ -176,7 +177,16 @@ class LeadNormalizer:
         # Normalize /in/ URLs
         url = re.sub(r"/in/([^/?]+).*", r"/in/\1", url)
         url = url.rstrip("/")
-        return url if "linkedin.com" in url else None
+        # Validate using urlparse to ensure the hostname is actually linkedin.com
+        parsed = urlparse(url)
+        linkedin_hosts = ("linkedin.com", "www.linkedin.com")
+        if (
+            parsed.hostname
+            and parsed.hostname.lower().endswith("linkedin.com")
+            and parsed.hostname.lower() in linkedin_hosts
+        ):
+            return url
+        return None
 
     # ── Email extraction ─────────────────────────────────────────────────
 

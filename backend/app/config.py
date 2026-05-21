@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "AI Outbound OS"
     VERSION: str = "0.1.0"
+    APP_ENV: str = "development"
     DEBUG: bool = False
 
     # ── Database ────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ class Settings(BaseSettings):
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
+        "extra": "ignore",
     }
 
 
