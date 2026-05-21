@@ -135,7 +135,10 @@ async def update_campaign(
     svc = CampaignService(db)
     updates = body.model_dump(exclude_unset=True)
     campaign = await svc.update_campaign(
-        campaign_id, current_user.team_id, current_user.id, **updates,
+        campaign_id,
+        current_user.team_id,
+        current_user.id,
+        **updates,
     )
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -263,10 +266,7 @@ async def enroll_leads(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-    return [
-        CampaignEnrollmentResponse.model_validate(e, from_attributes=True)
-        for e in enrollments
-    ]
+    return [CampaignEnrollmentResponse.model_validate(e, from_attributes=True) for e in enrollments]
 
 
 @router.get("/{campaign_id}/enrollments", response_model=dict)
@@ -285,7 +285,10 @@ async def list_enrollments(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     enrollments, total = await svc.get_enrollments(
-        campaign_id=campaign_id, status=status_filter, page=page, per_page=per_page,
+        campaign_id=campaign_id,
+        status=status_filter,
+        page=page,
+        per_page=per_page,
     )
     params = PaginationParams(page=page, per_page=per_page)
     return paginated_response(

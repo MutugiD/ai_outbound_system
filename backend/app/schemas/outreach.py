@@ -83,6 +83,7 @@ class CampaignResponse(BaseModel):
 
 class CampaignDetailResponse(CampaignResponse):
     """Campaign with nested steps."""
+
     steps: list[CampaignStepResponse] = []
 
 
@@ -227,6 +228,7 @@ class ClassifyReplyRequest(BaseModel):
 
 class ClassifyTextRequest(BaseModel):
     """Classify raw reply text without persisting."""
+
     reply_text: str
     original_subject: Optional[str] = None
     original_body: Optional[str] = None

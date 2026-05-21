@@ -75,9 +75,7 @@ class EnrichmentService:
             contact = result.scalar_one_or_none()
 
         # Create a Job record for tracking
-        job = await create_job(
-            self.db, job_type="lead_enrichment", lead_id=lead_id, company_id=lead.company_id
-        )
+        job = await create_job(self.db, job_type="lead_enrichment", lead_id=lead_id, company_id=lead.company_id)
         await update_job_status(self.db, job.id, "running")
 
         summary: dict = {"lead_id": str(lead_id), "steps": {}}
@@ -93,9 +91,7 @@ class EnrichmentService:
             "linkedin_url": contact.linkedin_url if contact else None,
         }
         try:
-            contact_result = await run_with_fallback(
-                [_apollo, _hunter], "enrich_contact", lead_data
-            )
+            contact_result = await run_with_fallback([_apollo, _hunter], "enrich_contact", lead_data)
             summary["steps"]["contact_enrichment"] = contact_result
             await self._store_enrichment(
                 lead_id=lead_id,

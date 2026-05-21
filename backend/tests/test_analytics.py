@@ -28,6 +28,7 @@ from app.models.reply import Reply, ReplyClassification
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 async def _create_team_with_admin(db_session):
     """Create a team + admin user and return (team, user)."""
     from passlib.context import CryptContext
@@ -103,6 +104,7 @@ async def _seed_leads(db_session, team_id, count=5, **kwargs):
 
 # ── Analytics Tests ──────────────────────────────────────────────────────────
 
+
 async def test_overview_stats_structure(client, db_session):
     """GET /analytics/overview returns required fields."""
     team, user = await _create_team_with_admin(db_session)
@@ -116,9 +118,17 @@ async def test_overview_stats_structure(client, db_session):
     data = resp.json()
 
     required_fields = [
-        "total_leads", "new_leads_today", "hot_leads", "messages_sent",
-        "reply_rate", "interested_replies", "booked_calls", "pipeline_value",
-        "conversion_rate", "top_source", "top_campaign",
+        "total_leads",
+        "new_leads_today",
+        "hot_leads",
+        "messages_sent",
+        "reply_rate",
+        "interested_replies",
+        "booked_calls",
+        "pipeline_value",
+        "conversion_rate",
+        "top_source",
+        "top_campaign",
     ]
     for field in required_fields:
         assert field in data, f"Missing field: {field}"
@@ -287,6 +297,7 @@ async def test_signal_distribution(client, db_session):
 
 # ── Admin Tests ──────────────────────────────────────────────────────────────
 
+
 async def test_admin_list_users(client, db_session):
     """GET /admin/users returns paginated user list."""
     team, admin_user = await _create_team_with_admin(db_session)
@@ -325,6 +336,7 @@ async def test_admin_delete_user(client, db_session):
 
     # Create second user to delete
     from passlib.context import CryptContext
+
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     second_user = User(
         team_id=team.id,
@@ -384,6 +396,7 @@ async def test_admin_api_key_crud(client, db_session):
 
 # ── Notification Tests ───────────────────────────────────────────────────────
 
+
 async def test_notification_crud(client, db_session):
     """Create, list, mark-read, and count notifications."""
     team, user = await _create_team_with_admin(db_session)
@@ -391,6 +404,7 @@ async def test_notification_crud(client, db_session):
 
     # Create notification via service (no API endpoint for create — internal)
     from app.services.notification_service import NotificationService
+
     svc = NotificationService(db_session)
     n = await svc.create_notification(
         team_id=team.id,
@@ -426,6 +440,7 @@ async def test_notification_mark_read(client, db_session):
     token = await _make_auth_token(user)
 
     from app.services.notification_service import NotificationService
+
     svc = NotificationService(db_session)
     n = await svc.create_notification(
         team_id=team.id,
@@ -458,6 +473,7 @@ async def test_unread_notification_count(client, db_session):
     token = await _make_auth_token(user)
 
     from app.services.notification_service import NotificationService
+
     svc = NotificationService(db_session)
     await svc.create_notification(team_id=team.id, user_id=user.id, type="system", title="N1", message="m1")
     await svc.create_notification(team_id=team.id, user_id=user.id, type="system", title="N2", message="m2")
@@ -473,6 +489,7 @@ async def test_unread_notification_count(client, db_session):
 
 
 # ── Export Tests ──────────────────────────────────────────────────────────────
+
 
 async def test_export_csv_format(client, db_session):
     """GET /export/leads/csv returns valid CSV with headers."""
@@ -526,6 +543,7 @@ async def test_export_json_structure(client, db_session):
 
 
 # ── Empty Data Test ──────────────────────────────────────────────────────────
+
 
 async def test_analytics_with_empty_data(client, db_session):
     """All analytics endpoints return valid empty/default responses with no leads."""

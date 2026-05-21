@@ -47,9 +47,7 @@ class LeadDeduplicator:
 
     # ── Public API ───────────────────────────────────────────────────────
 
-    async def check_duplicate(
-        self, lead: NormalizedLead, team_id: uuid.UUID
-    ) -> DeduplicationResult:
+    async def check_duplicate(self, lead: NormalizedLead, team_id: uuid.UUID) -> DeduplicationResult:
         """Check if *lead* is a duplicate of an existing record.
 
         Checks primary keys (exact) first, then secondary keys (fuzzy).
@@ -64,9 +62,7 @@ class LeadDeduplicator:
         result = await self._check_secondary_keys(lead, team_id)
         return result
 
-    async def merge_or_create(
-        self, lead: NormalizedLead, team_id: uuid.UUID, user_id: uuid.UUID
-    ) -> Lead:
+    async def merge_or_create(self, lead: NormalizedLead, team_id: uuid.UUID, user_id: uuid.UUID) -> Lead:
         """If a duplicate exists, merge new data into it. Otherwise create a new lead.
 
         Returns the (merged or created) Lead DB object.
@@ -80,25 +76,17 @@ class LeadDeduplicator:
 
     # ── Primary key checks ────────────────────────────────────────────────
 
-    async def _check_primary_keys(
-        self, lead: NormalizedLead, team_id: uuid.UUID
-    ) -> DeduplicationResult:
+    async def _check_primary_keys(self, lead: NormalizedLead, team_id: uuid.UUID) -> DeduplicationResult:
         """Check exact matches on email, company_domain, and linkedin_url."""
 
         # Email match — check contacts
         if lead.email:
-            stmt = (
-                select(Contact)
-                .where(Contact.email == lead.email.lower())
-            )
+            stmt = select(Contact).where(Contact.email == lead.email.lower())
             result = await self.db.execute(stmt)
             contact = result.scalar_one_or_none()
             if contact:
                 # Find the lead for this contact
-                lead_stmt = (
-                    select(Lead)
-                    .where(Lead.contact_id == contact.id, Lead.team_id == team_id)
-                )
+                lead_stmt = select(Lead).where(Lead.contact_id == contact.id, Lead.team_id == team_id)
                 lead_result = await self.db.execute(lead_stmt)
                 existing = lead_result.scalar_one_or_none()
                 if existing:
@@ -111,17 +99,11 @@ class LeadDeduplicator:
 
         # Domain match — check companies
         if lead.company_domain:
-            stmt = (
-                select(Company)
-                .where(Company.domain == lead.company_domain.lower(), Company.team_id == team_id)
-            )
+            stmt = select(Company).where(Company.domain == lead.company_domain.lower(), Company.team_id == team_id)
             result = await self.db.execute(stmt)
             company = result.scalar_one_or_none()
             if company:
-                lead_stmt = (
-                    select(Lead)
-                    .where(Lead.company_id == company.id, Lead.team_id == team_id)
-                )
+                lead_stmt = select(Lead).where(Lead.company_id == company.id, Lead.team_id == team_id)
                 lead_result = await self.db.execute(lead_stmt)
                 existing = lead_result.scalar_one_or_none()
                 if existing:
@@ -138,10 +120,7 @@ class LeadDeduplicator:
             result = await self.db.execute(stmt)
             contact = result.scalar_one_or_none()
             if contact:
-                lead_stmt = (
-                    select(Lead)
-                    .where(Lead.contact_id == contact.id, Lead.team_id == team_id)
-                )
+                lead_stmt = select(Lead).where(Lead.contact_id == contact.id, Lead.team_id == team_id)
                 lead_result = await self.db.execute(lead_stmt)
                 existing = lead_result.scalar_one_or_none()
                 if existing:
@@ -156,9 +135,7 @@ class LeadDeduplicator:
 
     # ── Secondary (fuzzy) key checks ───────────────────────────────────────
 
-    async def _check_secondary_keys(
-        self, lead: NormalizedLead, team_id: uuid.UUID
-    ) -> DeduplicationResult:
+    async def _check_secondary_keys(self, lead: NormalizedLead, team_id: uuid.UUID) -> DeduplicationResult:
         """Fuzzy-match on company_name and contact_name, scoped to team."""
 
         if not lead.company_name:
@@ -181,10 +158,7 @@ class LeadDeduplicator:
         if best_company:
             # If we also have a contact name, verify that too
             if lead.contact_name:
-                contact_stmt = (
-                    select(Contact)
-                    .where(Contact.company_id == best_company.id)
-                )
+                contact_stmt = select(Contact).where(Contact.company_id == best_company.id)
                 contact_result = await self.db.execute(contact_stmt)
                 contacts = list(contact_result.scalars().all())
 
@@ -207,10 +181,7 @@ class LeadDeduplicator:
                             )
 
             # Company name match alone (without contact verification)
-            lead_stmt = (
-                select(Lead)
-                .where(Lead.company_id == best_company.id, Lead.team_id == team_id)
-            )
+            lead_stmt = select(Lead).where(Lead.company_id == best_company.id, Lead.team_id == team_id)
             lead_result = await self.db.execute(lead_stmt)
             existing = lead_result.scalar_one_or_none()
             if existing:

@@ -69,6 +69,7 @@ class LeadResponse(BaseModel):
 
 class LeadDetailResponse(LeadResponse):
     """Lead with nested company/contact summary."""
+
     company_name: Optional[str] = None
     company_domain: Optional[str] = None
     contact_full_name: Optional[str] = None

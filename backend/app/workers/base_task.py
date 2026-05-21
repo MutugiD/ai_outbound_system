@@ -108,9 +108,7 @@ class BaseTask(Task):
                 retries = self.request.retries or 0
                 if retries < self.max_retries:
                     # Will retry — mark as retrying
-                    next_retry = datetime.utcnow() + timedelta(
-                        seconds=(2 ** retries) * self.retry_backoff_factor
-                    )
+                    next_retry = datetime.utcnow() + timedelta(seconds=(2**retries) * self.retry_backoff_factor)
                     # We still need to mark the current attempt as failed
                     self._update_job_status(job_id, "failed", error=str(exc))
                 else:

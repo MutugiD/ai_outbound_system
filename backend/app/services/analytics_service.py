@@ -34,24 +34,18 @@ class AnalyticsService:
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Total leads
-        total_result = await self.db.execute(
-            select(func.count(Lead.id)).where(Lead.team_id == team_id)
-        )
+        total_result = await self.db.execute(select(func.count(Lead.id)).where(Lead.team_id == team_id))
         total_leads = total_result.scalar() or 0
 
         # New leads today
         new_today_result = await self.db.execute(
-            select(func.count(Lead.id)).where(
-                and_(Lead.team_id == team_id, Lead.created_at >= today_start)
-            )
+            select(func.count(Lead.id)).where(and_(Lead.team_id == team_id, Lead.created_at >= today_start))
         )
         new_leads_today = new_today_result.scalar() or 0
 
         # Hot leads (score_band in ('hot', 'very_hot'))
         hot_result = await self.db.execute(
-            select(func.count(Lead.id)).where(
-                and_(Lead.team_id == team_id, Lead.score_band.in_(["hot", "very_hot"]))
-            )
+            select(func.count(Lead.id)).where(and_(Lead.team_id == team_id, Lead.score_band.in_(["hot", "very_hot"])))
         )
         hot_leads = hot_result.scalar() or 0
 
@@ -60,7 +54,12 @@ class AnalyticsService:
             select(func.count(OutreachMessage.id))
             .select_from(OutreachMessage)
             .join(Lead, OutreachMessage.lead_id == Lead.id)
-            .where(and_(Lead.team_id == team_id, OutreachMessage.status.in_(["sent", "delivered", "opened", "clicked", "replied"])))
+            .where(
+                and_(
+                    Lead.team_id == team_id,
+                    OutreachMessage.status.in_(["sent", "delivered", "opened", "clicked", "replied"]),
+                )
+            )
         )
         messages_sent = msg_sent_result.scalar() or 0
 
@@ -85,24 +84,21 @@ class AnalyticsService:
 
         # Booked calls (leads with pipeline_stage = 'meeting_booked')
         booked_result = await self.db.execute(
-            select(func.count(Lead.id)).where(
-                and_(Lead.team_id == team_id, Lead.pipeline_stage == "meeting_booked")
-            )
+            select(func.count(Lead.id)).where(and_(Lead.team_id == team_id, Lead.pipeline_stage == "meeting_booked"))
         )
         booked_calls = booked_result.scalar() or 0
 
         # Pipeline value (= total leads not lost or suppressed)
         pipeline_result = await self.db.execute(
             select(func.count(Lead.id)).where(
-                and_(Lead.team_id == team_id, ~Lead.pipeline_stage.in_(["lost", "suppressed"])))
+                and_(Lead.team_id == team_id, ~Lead.pipeline_stage.in_(["lost", "suppressed"]))
+            )
         )
         pipeline_value = pipeline_result.scalar() or 0
 
         # Conversion rate (won / total active leads)
         won_result = await self.db.execute(
-            select(func.count(Lead.id)).where(
-                and_(Lead.team_id == team_id, Lead.pipeline_stage == "won")
-            )
+            select(func.count(Lead.id)).where(and_(Lead.team_id == team_id, Lead.pipeline_stage == "won"))
         )
         won_count = won_result.scalar() or 0
         conversion_rate = round(won_count / pipeline_value, 4) if pipeline_value > 0 else 0.0
@@ -162,18 +158,14 @@ class AnalyticsService:
             campaign_filter.append(Campaign.id == campaign_id)
 
         # Fetch campaigns
-        campaigns_result = await self.db.execute(
-            select(Campaign).where(and_(*campaign_filter))
-        )
+        campaigns_result = await self.db.execute(select(Campaign).where(and_(*campaign_filter)))
         campaigns = campaigns_result.scalars().all()
 
         results = []
         for campaign in campaigns:
             # Enrolled leads
             enrolled_result = await self.db.execute(
-                select(func.count(CampaignEnrollment.id)).where(
-                    CampaignEnrollment.campaign_id == campaign.id
-                )
+                select(func.count(CampaignEnrollment.id)).where(CampaignEnrollment.campaign_id == campaign.id)
             )
             enrolled = enrolled_result.scalar() or 0
 
@@ -208,9 +200,7 @@ class AnalyticsService:
             opened = opened_result.scalar() or 0
 
             # Replied
-            replied_result = await self.db.execute(
-                msg_base.where(OutreachMessage.status == "replied")
-            )
+            replied_result = await self.db.execute(msg_base.where(OutreachMessage.status == "replied"))
             replied = replied_result.scalar() or 0
 
             # Positive replies
@@ -231,9 +221,7 @@ class AnalyticsService:
             positive = positive_result.scalar() or 0
 
             # Bounced
-            bounced_result = await self.db.execute(
-                msg_base.where(OutreachMessage.status == "bounced")
-            )
+            bounced_result = await self.db.execute(msg_base.where(OutreachMessage.status == "bounced"))
             bounced = bounced_result.scalar() or 0
 
             # Booked calls
@@ -250,17 +238,19 @@ class AnalyticsService:
             )
             booked = booked_result.scalar() or 0
 
-            results.append({
-                "campaign_id": str(campaign.id),
-                "campaign_name": campaign.name,
-                "enrolled": enrolled,
-                "messages_sent": messages_sent,
-                "open_rate": round(opened / messages_sent, 4) if messages_sent > 0 else 0.0,
-                "reply_rate": round(replied / messages_sent, 4) if messages_sent > 0 else 0.0,
-                "positive_reply_rate": round(positive / messages_sent, 4) if messages_sent > 0 else 0.0,
-                "booked_calls": booked,
-                "bounce_rate": round(bounced / messages_sent, 4) if messages_sent > 0 else 0.0,
-            })
+            results.append(
+                {
+                    "campaign_id": str(campaign.id),
+                    "campaign_name": campaign.name,
+                    "enrolled": enrolled,
+                    "messages_sent": messages_sent,
+                    "open_rate": round(opened / messages_sent, 4) if messages_sent > 0 else 0.0,
+                    "reply_rate": round(replied / messages_sent, 4) if messages_sent > 0 else 0.0,
+                    "positive_reply_rate": round(positive / messages_sent, 4) if messages_sent > 0 else 0.0,
+                    "booked_calls": booked,
+                    "bounce_rate": round(bounced / messages_sent, 4) if messages_sent > 0 else 0.0,
+                }
+            )
 
         return results
 
@@ -316,12 +306,14 @@ class AnalyticsService:
             converted = conv_result.scalar() or 0
             conversion_rate = round(converted / total_in_source, 4)
 
-            results.append({
-                "source": source_type,
-                "leads": leads,
-                "reply_rate": reply_rate,
-                "conversion_rate": conversion_rate,
-            })
+            results.append(
+                {
+                    "source": source_type,
+                    "leads": leads,
+                    "reply_rate": reply_rate,
+                    "conversion_rate": conversion_rate,
+                }
+            )
 
         return results
 
@@ -375,12 +367,14 @@ class AnalyticsService:
             converted = conv_result.scalar() or 0
             conversion_rate = round(converted / messages, 4) if messages > 0 else 0.0
 
-            results.append({
-                "channel": channel,
-                "messages": messages,
-                "reply_rate": reply_rate,
-                "conversion_rate": conversion_rate,
-            })
+            results.append(
+                {
+                    "channel": channel,
+                    "messages": messages,
+                    "reply_rate": reply_rate,
+                    "conversion_rate": conversion_rate,
+                }
+            )
 
         return results
 
@@ -400,8 +394,17 @@ class AnalyticsService:
 
         # Standard pipeline stage order for conversion computation
         stage_order = [
-            "new", "enriched", "researched", "scored", "ready_for_outreach",
-            "contacted", "replied", "interested", "meeting_booked", "proposal_sent", "won",
+            "new",
+            "enriched",
+            "researched",
+            "scored",
+            "ready_for_outreach",
+            "contacted",
+            "replied",
+            "interested",
+            "meeting_booked",
+            "proposal_sent",
+            "won",
         ]
 
         # Compute conversion rates between consecutive stages
@@ -413,11 +416,13 @@ class AnalyticsService:
             from_count = stage_counts.get(from_stage, 0)
             to_count = stage_counts.get(to_stage, 0)
             rate = round(to_count / from_count, 4) if from_count > 0 else 0.0
-            conversions.append({
-                "from_stage": from_stage,
-                "to_stage": to_stage,
-                "rate": rate,
-            })
+            conversions.append(
+                {
+                    "from_stage": from_stage,
+                    "to_stage": to_stage,
+                    "rate": rate,
+                }
+            )
 
         return {
             "stages": stages,

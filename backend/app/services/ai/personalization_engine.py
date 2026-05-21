@@ -37,11 +37,11 @@ logger = logging.getLogger(__name__)
 # ── Personalization strategies ────────────────────────────────────────────────
 
 STRATEGIES = [
-    "pain_point",    # Lead with the prospect's pain / signal
-    "compliment",    # Lead with genuine compliment about their work/company
-    "question",      # Lead with a thought-provoking question
-    "insight",       # Lead with a valuable insight or datapoint
-    "direct",        # Short, direct value proposition
+    "pain_point",  # Lead with the prospect's pain / signal
+    "compliment",  # Lead with genuine compliment about their work/company
+    "question",  # Lead with a thought-provoking question
+    "insight",  # Lead with a valuable insight or datapoint
+    "direct",  # Short, direct value proposition
 ]
 
 STRATEGY_DESCRIPTIONS = {
@@ -66,17 +66,17 @@ TONE_GUIDELINES = {
 
 class MessageVariant(BaseModel):
     """A single personalized message variant."""
+
     subject: str = Field(description="Email subject line (empty for LinkedIn/SMS)")
     body: str = Field(description="The full message body, personalized for this lead")
     strategy: str = Field(description="The personalization strategy used")
-    personalization_points: list[str] = Field(
-        description="Specific data points used for personalization"
-    )
+    personalization_points: list[str] = Field(description="Specific data points used for personalization")
     confidence: float = Field(description="Confidence that this message will resonate (0-1)", ge=0.0, le=1.0)
 
 
 class PersonalizationOutput(BaseModel):
     """Structured output from the personalization engine."""
+
     variants: list[MessageVariant] = Field(description="Generated message variants")
 
 
@@ -112,9 +112,7 @@ class PersonalizationContext:
             if self.contact.full_name:
                 contact_parts.append(f"Name: {self.contact.full_name}")
             elif self.contact.first_name or self.contact.last_name:
-                contact_parts.append(
-                    f"Name: {self.contact.first_name or ''} {self.contact.last_name or ''}".strip()
-                )
+                contact_parts.append(f"Name: {self.contact.first_name or ''} {self.contact.last_name or ''}".strip())
             if self.contact.title:
                 contact_parts.append(f"Title: {self.contact.title}")
             if self.contact.seniority:
@@ -156,9 +154,7 @@ class PersonalizationContext:
         if self.signals:
             signal_lines = []
             for sig in self.signals[:10]:  # cap at 10 most relevant
-                signal_lines.append(
-                    f"- [{sig.category}] (confidence: {sig.confidence}) {sig.evidence[:200]}"
-                )
+                signal_lines.append(f"- [{sig.category}] (confidence: {sig.confidence}) {sig.evidence[:200]}")
             if signal_lines:
                 parts.append("## Buying Signals\n" + "\n".join(signal_lines))
 
@@ -187,9 +183,7 @@ class PersonalizationContext:
             enrich_parts = []
             for enr in self.enrichments[:5]:
                 if enr.data and isinstance(enr.data, dict):
-                    data_str = ", ".join(
-                        f"{k}: {v}" for k, v in list(enr.data.items())[:5]
-                    )
+                    data_str = ", ".join(f"{k}: {v}" for k, v in list(enr.data.items())[:5])
                     enrich_parts.append(f"- [{enr.enrichment_type}] {data_str}")
             if enrich_parts:
                 parts.append("## Enrichment Data\n" + "\n".join(enrich_parts))
@@ -234,9 +228,7 @@ class PersonalizationEngine:
     def __init__(self, llm_service: Optional[LLMService] = None):
         self._llm = llm_service or LLMService()
 
-    async def _load_context(
-        self, lead_id: uuid.UUID, db: AsyncSession
-    ) -> PersonalizationContext:
+    async def _load_context(self, lead_id: uuid.UUID, db: AsyncSession) -> PersonalizationContext:
         """Load all relevant data for personalizing messages for a lead."""
         # Fetch lead
         result = await db.execute(select(Lead).where(Lead.id == lead_id))
@@ -258,9 +250,7 @@ class PersonalizationEngine:
 
         # Fetch signals
         result = await db.execute(
-            select(BuyingSignal)
-            .where(BuyingSignal.lead_id == lead_id)
-            .order_by(BuyingSignal.confidence.desc())
+            select(BuyingSignal).where(BuyingSignal.lead_id == lead_id).order_by(BuyingSignal.confidence.desc())
         )
         signals = list(result.scalars().all())
 
@@ -276,9 +266,7 @@ class PersonalizationEngine:
             audit = result.scalar_one_or_none()
 
         # Fetch enrichment
-        result = await db.execute(
-            select(EnrichmentRecord).where(EnrichmentRecord.lead_id == lead_id)
-        )
+        result = await db.execute(select(EnrichmentRecord).where(EnrichmentRecord.lead_id == lead_id))
         enrichments = list(result.scalars().all())
 
         return PersonalizationContext(
@@ -350,9 +338,7 @@ class PersonalizationEngine:
         # Build signal summary for focus
         signal_summary = ""
         if top_signals:
-            signal_lines = [
-                f"  * {s.category}: {s.evidence[:150]}" for s in top_signals
-            ]
+            signal_lines = [f"  * {s.category}: {s.evidence[:150]}" for s in top_signals]
             signal_summary = "Key signals to reference:\n" + "\n".join(signal_lines)
 
         # Channel-specific instructions
@@ -367,10 +353,7 @@ class PersonalizationEngine:
                 "Keep it under 300 characters for the connection request note, "
                 "or under 500 characters for a follow-up DM. Be conversational."
             ),
-            "sms": (
-                "Generate an SMS message. No subject line. "
-                "Keep it under 160 characters. Be extremely concise."
-            ),
+            "sms": ("Generate an SMS message. No subject line. Keep it under 160 characters. Be extremely concise."),
         }
 
         channel_instruction = channel_instructions.get(channel, channel_instructions["email"])
@@ -426,7 +409,10 @@ class PersonalizationEngine:
             logger.error("Personalization engine LLM call failed: %s", exc)
             # Fallback: generate a simple template-based message
             return await self._generate_fallback_messages(
-                ctx=ctx, channel=channel, tone=tone, db=db,
+                ctx=ctx,
+                channel=channel,
+                tone=tone,
+                db=db,
             )
 
         # Persist messages
@@ -531,9 +517,7 @@ class PersonalizationEngine:
         Merges the template structure with personalized content.
         """
         # Load campaign step
-        result = await db.execute(
-            select(CampaignStep).where(CampaignStep.id == campaign_step_id)
-        )
+        result = await db.execute(select(CampaignStep).where(CampaignStep.id == campaign_step_id))
         step = result.scalar_one_or_none()
         if not step:
             raise ValueError(f"CampaignStep {campaign_step_id} not found")
@@ -546,7 +530,9 @@ class PersonalizationEngine:
         if step.template_type:
             custom_instructions += f"Message type: {step.template_type}. "
         if step.body_template:
-            custom_instructions += f"Consider this template structure (adapt and personalize it): {step.body_template[:500]} "
+            custom_instructions += (
+                f"Consider this template structure (adapt and personalize it): {step.body_template[:500]} "
+            )
 
         messages = await self.generate_messages(
             lead_id=lead_id,

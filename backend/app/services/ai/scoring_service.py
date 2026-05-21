@@ -108,9 +108,7 @@ class ScoringService:
             contact = result.scalar_one_or_none()
 
         # Fetch signals for this lead
-        result = await self.db.execute(
-            select(BuyingSignal).where(BuyingSignal.lead_id == lead_id)
-        )
+        result = await self.db.execute(select(BuyingSignal).where(BuyingSignal.lead_id == lead_id))
         signals = list(result.scalars().all())
 
         # Fetch latest website audit for the company
@@ -126,9 +124,7 @@ class ScoringService:
                 audits = [audit_row]
 
         # Fetch enrichment records
-        result = await self.db.execute(
-            select(EnrichmentRecord).where(EnrichmentRecord.lead_id == lead_id)
-        )
+        result = await self.db.execute(select(EnrichmentRecord).where(EnrichmentRecord.lead_id == lead_id))
         enrichments = list(result.scalars().all())
 
         # ── Calculate each dimension ───────────────────────────────────
@@ -142,16 +138,18 @@ class ScoringService:
         recency = self._score_recency(signals)
 
         # ── Weighted total ──────────────────────────────────────────────
-        total = int(round(
-            buying_intent * WEIGHTS["buying_intent"]
-            + urgency * WEIGHTS["urgency"]
-            + operational_pain * WEIGHTS["operational_pain"]
-            + scaling_pressure * WEIGHTS["scaling_pressure"]
-            + budget_probability * WEIGHTS["budget_probability"]
-            + website_weakness * WEIGHTS["website_weakness"]
-            + contactability * WEIGHTS["contactability"]
-            + recency * WEIGHTS["recency"]
-        ))
+        total = int(
+            round(
+                buying_intent * WEIGHTS["buying_intent"]
+                + urgency * WEIGHTS["urgency"]
+                + operational_pain * WEIGHTS["operational_pain"]
+                + scaling_pressure * WEIGHTS["scaling_pressure"]
+                + budget_probability * WEIGHTS["budget_probability"]
+                + website_weakness * WEIGHTS["website_weakness"]
+                + contactability * WEIGHTS["contactability"]
+                + recency * WEIGHTS["recency"]
+            )
+        )
         total = max(0, min(100, total))  # clamp to 0-100
         band = _band(total)
 
@@ -226,8 +224,12 @@ class ScoringService:
 
         # High-signal categories that strongly indicate buying intent
         strong_categories = {
-            "funding_event", "rapid_hiring", "scaling_issues",
-            "crm_pain", "manual_processes", "workflow_inefficiency",
+            "funding_event",
+            "rapid_hiring",
+            "scaling_issues",
+            "crm_pain",
+            "manual_processes",
+            "workflow_inefficiency",
         }
         strong_count = sum(1 for s in signals if s.category in strong_categories)
 
@@ -404,8 +406,15 @@ class ScoringService:
 
             # Industry signal (some industries spend more on ops tools)
             high_budget_industries = {
-                "technology", "software", "saas", "fintech", "healthtech",
-                "e-commerce", "financial services", "healthcare", "real estate",
+                "technology",
+                "software",
+                "saas",
+                "fintech",
+                "healthtech",
+                "e-commerce",
+                "financial services",
+                "healthcare",
+                "real estate",
             }
             if company.industry and company.industry.lower() in high_budget_industries:
                 score += 10
@@ -577,7 +586,7 @@ class ScoringService:
 
         lines.append("Top scoring dimensions:")
         for name, score, weight in dims[:3]:
-            lines.append(f"  - {name}: {score}/100 (weight: {int(weight*100)}%)")
+            lines.append(f"  - {name}: {score}/100 (weight: {int(weight * 100)}%)")
 
         # Key signals
         if signals:

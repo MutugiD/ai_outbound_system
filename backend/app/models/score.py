@@ -27,6 +27,4 @@ class LeadScore(SQLModel, table=True):
     model_used: Optional[str] = Field(default=None, max_length=100)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_scores_lead", "lead_id"),
-    )
+    __table_args__ = (Index("idx_scores_lead", "lead_id"),)

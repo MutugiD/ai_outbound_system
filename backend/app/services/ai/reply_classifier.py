@@ -82,6 +82,7 @@ CATEGORY_DESCRIPTIONS = {
 
 class ClassificationItem(BaseModel):
     """Single classification result."""
+
     classification: str = Field(description=f"Category: one of {VALID_CATEGORIES}")
     subtype: Optional[str] = Field(
         description="More specific subcategory, e.g. 'pricing_concern', 'timing', 'competitor_comparison'"
@@ -98,6 +99,7 @@ class ClassificationItem(BaseModel):
 
 class ReplyClassificationOutput(BaseModel):
     """Structured output for reply classification."""
+
     result: ClassificationItem
 
 
@@ -133,8 +135,13 @@ class ReplyClassifier:
 
         # Unsubscribe patterns
         unsubscribe_patterns = [
-            "unsubscribe", "remove me", "stop sending", "don't email",
-            "opt out", "no longer interested", "take me off",
+            "unsubscribe",
+            "remove me",
+            "stop sending",
+            "don't email",
+            "opt out",
+            "no longer interested",
+            "take me off",
         ]
         for pattern in unsubscribe_patterns:
             if pattern in text_lower:
@@ -149,9 +156,17 @@ class ReplyClassifier:
 
         # Out-of-office patterns
         ooo_patterns = [
-            "out of office", "out of the office", "i am currently away",
-            "auto-reply", "auto reply", "automatic reply", "i will be out",
-            "on leave", "on vacation", "maternity leave", "paternity leave",
+            "out of office",
+            "out of the office",
+            "i am currently away",
+            "auto-reply",
+            "auto reply",
+            "automatic reply",
+            "i will be out",
+            "on leave",
+            "on vacation",
+            "maternity leave",
+            "paternity leave",
         ]
         for pattern in ooo_patterns:
             if pattern in text_lower:
@@ -166,8 +181,14 @@ class ReplyClassifier:
 
         # Spam patterns
         spam_patterns = [
-            "buy cheap", "viagra", "lottery", "you won", "nigerian",
-            "prince", "click here to claim", "free money",
+            "buy cheap",
+            "viagra",
+            "lottery",
+            "you won",
+            "nigerian",
+            "prince",
+            "click here to claim",
+            "free money",
         ]
         for pattern in spam_patterns:
             if pattern in text_lower:
@@ -204,9 +225,7 @@ class ReplyClassifier:
     ) -> ClassificationItem:
         """Classify a reply using the LLM."""
         # Build prompt
-        category_list = "\n".join(
-            f"  - {cat}: {desc}" for cat, desc in CATEGORY_DESCRIPTIONS.items()
-        )
+        category_list = "\n".join(f"  - {cat}: {desc}" for cat, desc in CATEGORY_DESCRIPTIONS.items())
 
         prompt = (
             f"Classify the following prospect reply into exactly one category.\n\n"
@@ -218,10 +237,7 @@ class ReplyClassifier:
         if original_body:
             prompt += f"Body:\n{original_body[:2000]}\n"
 
-        prompt += (
-            f"\n## Prospect's reply\n"
-            f"{reply_text[:3000]}\n\n"
-        )
+        prompt += f"\n## Prospect's reply\n{reply_text[:3000]}\n\n"
 
         if contact_context:
             prompt += f"## Additional context about the prospect\n{contact_context}\n\n"
@@ -273,9 +289,7 @@ class ReplyClassifier:
 
         original_message = None
         if reply.message_id:
-            result = await db.execute(
-                select(OutreachMessage).where(OutreachMessage.id == reply.message_id)
-            )
+            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == reply.message_id))
             original_message = result.scalar_one_or_none()
 
         lead = None

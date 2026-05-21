@@ -22,6 +22,4 @@ class Notification(SQLModel, table=True):
     is_read: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_notifications_user", "user_id", "is_read", "created_at"),
-    )
+    __table_args__ = (Index("idx_notifications_user", "user_id", "is_read", "created_at"),)

@@ -194,9 +194,8 @@ async def test_research_persists_to_db(db_session, test_team):
 
     # Verify it was persisted
     from sqlalchemy import select
-    result = await db_session.execute(
-        select(AIResearchReport).where(AIResearchReport.lead_id == lead.id)
-    )
+
+    result = await db_session.execute(select(AIResearchReport).where(AIResearchReport.lead_id == lead.id))
     fetched = result.scalar_one_or_none()
     assert fetched is not None
     assert fetched.company_summary == "A technology company focused on research testing."

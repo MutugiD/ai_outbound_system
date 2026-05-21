@@ -76,8 +76,11 @@ class CampaignService:
             await self.db.flush()
 
         await log_activity(
-            self.db, team_id=team_id, user_id=user_id,
-            lead_id=None, action="campaign_created",
+            self.db,
+            team_id=team_id,
+            user_id=user_id,
+            lead_id=None,
+            action="campaign_created",
             details={"campaign_id": str(campaign.id), "name": name},
         )
 
@@ -181,9 +184,7 @@ class CampaignService:
     async def get_steps(self, campaign_id: uuid.UUID) -> list[CampaignStep]:
         """Get all steps for a campaign, ordered by step_order."""
         result = await self.db.execute(
-            select(CampaignStep)
-            .where(CampaignStep.campaign_id == campaign_id)
-            .order_by(CampaignStep.step_order)
+            select(CampaignStep).where(CampaignStep.campaign_id == campaign_id).order_by(CampaignStep.step_order)
         )
         return list(result.scalars().all())
 
@@ -258,8 +259,11 @@ class CampaignService:
             await self.db.refresh(enrollment)
 
         await log_activity(
-            self.db, team_id=team_id, user_id=None,
-            lead_id=None, action="leads_enrolled",
+            self.db,
+            team_id=team_id,
+            user_id=None,
+            lead_id=None,
+            action="leads_enrolled",
             details={"campaign_id": str(campaign_id), "count": len(enrollments)},
         )
 
@@ -267,9 +271,7 @@ class CampaignService:
 
     async def remove_enrollment(self, enrollment_id: uuid.UUID) -> bool:
         """Stop/complete an enrollment (removes lead from campaign)."""
-        result = await self.db.execute(
-            select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id)
-        )
+        result = await self.db.execute(select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id))
         enrollment = result.scalar_one_or_none()
         if not enrollment:
             return False
@@ -286,9 +288,7 @@ class CampaignService:
         per_page: int = 50,
     ) -> tuple[list[CampaignEnrollment], int]:
         """List enrollments for a campaign."""
-        query = select(CampaignEnrollment).where(
-            CampaignEnrollment.campaign_id == campaign_id
-        )
+        query = select(CampaignEnrollment).where(CampaignEnrollment.campaign_id == campaign_id)
 
         if status:
             query = query.where(CampaignEnrollment.status == status)
@@ -333,8 +333,11 @@ class CampaignService:
         await self.db.refresh(campaign)
 
         await log_activity(
-            self.db, team_id=team_id, user_id=None,
-            lead_id=None, action="campaign_started",
+            self.db,
+            team_id=team_id,
+            user_id=None,
+            lead_id=None,
+            action="campaign_started",
             details={"campaign_id": str(campaign_id), "name": campaign.name},
         )
 
@@ -385,9 +388,7 @@ class CampaignService:
         Returns the enrollment with updated current_step and next_step_at.
         Returns None if this was the last step (enrollment completes).
         """
-        result = await self.db.execute(
-            select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id)
-        )
+        result = await self.db.execute(select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id))
         enrollment = result.scalar_one_or_none()
         if not enrollment:
             return None
@@ -485,9 +486,11 @@ class CampaignService:
         for campaign in campaigns:
             enrollments = await self.get_enrollments_due_now(campaign.id)
             if enrollments:
-                due_items.append({
-                    "campaign": campaign,
-                    "enrollments": enrollments,
-                })
+                due_items.append(
+                    {
+                        "campaign": campaign,
+                        "enrollments": enrollments,
+                    }
+                )
 
         return due_items

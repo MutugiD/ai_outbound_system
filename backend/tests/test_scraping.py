@@ -21,18 +21,22 @@ async def test_csv_adapter_parses_valid_csv():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False, newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["Company", "Email", "Domain", "LinkedIn"])
         writer.writeheader()
-        writer.writerow({
-            "Company": "Acme Corp",
-            "Email": "john@acme.com",
-            "Domain": "acme.com",
-            "LinkedIn": "https://linkedin.com/in/johndoe",
-        })
-        writer.writerow({
-            "Company": "Widget Inc",
-            "Email": "jane@widget.com",
-            "Domain": "widget.com",
-            "LinkedIn": "",
-        })
+        writer.writerow(
+            {
+                "Company": "Acme Corp",
+                "Email": "john@acme.com",
+                "Domain": "acme.com",
+                "LinkedIn": "https://linkedin.com/in/johndoe",
+            }
+        )
+        writer.writerow(
+            {
+                "Company": "Widget Inc",
+                "Email": "jane@widget.com",
+                "Domain": "widget.com",
+                "LinkedIn": "",
+            }
+        )
         tmp_path = f.name
 
     try:
@@ -52,12 +56,14 @@ async def test_csv_adapter_handles_column_aliases():
         # Use alias names: "Organization" instead of "Company", "Website" instead of "Domain"
         writer = csv.DictWriter(f, fieldnames=["Organization", "Website", "Contact", "EmailAddress"])
         writer.writeheader()
-        writer.writerow({
-            "Organization": "Beta LLC",
-            "Website": "www.beta.com",
-            "Contact": "Bob Smith",
-            "EmailAddress": "bob@beta.com",
-        })
+        writer.writerow(
+            {
+                "Organization": "Beta LLC",
+                "Website": "www.beta.com",
+                "Contact": "Bob Smith",
+                "EmailAddress": "bob@beta.com",
+            }
+        )
         tmp_path = f.name
 
     try:
@@ -164,7 +170,9 @@ def test_normalizer_normalizes_linkedin_urls():
     assert result.linkedin_url == "https://linkedin.com/in/johndoe"
 
     # Remove www
-    raw = RawLead(source_type="csv_import", company_name="Test", url="https://www.linkedin.com/in/janesmith", raw_data={})
+    raw = RawLead(
+        source_type="csv_import", company_name="Test", url="https://www.linkedin.com/in/janesmith", raw_data={}
+    )
     result = normalizer.normalize(raw)
     assert result.linkedin_url == "https://linkedin.com/in/janesmith"
 

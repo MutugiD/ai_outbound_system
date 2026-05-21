@@ -27,6 +27,7 @@ async def _get_current_user(authorization: str = Depends(lambda: None), db: Asyn
     # In production, this would extract the JWT from the Authorization header
     # and validate it.  For now, we allow direct access for development.
     from app.models.user import User
+
     result = await db.execute(select(User).limit(1))
     user = result.scalar_one_or_none()
     if user:

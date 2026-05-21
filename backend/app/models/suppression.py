@@ -17,6 +17,4 @@ class SuppressionList(SQLModel, table=True):
     source: str = Field(default=None, max_length=100)  # campaign_id or 'manual'
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_suppression_email", "email"),
-    )
+    __table_args__ = (Index("idx_suppression_email", "email"),)

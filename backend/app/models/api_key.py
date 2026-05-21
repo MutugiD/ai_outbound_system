@@ -16,7 +16,7 @@ class APIKey(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id")
     key_hash: str = Field(unique=True, max_length=1024)
     name: str = Field(max_length=255)
-    permissions: list = Field(default=["read"],sa_column=Column(JSON))
+    permissions: list = Field(default=["read"], sa_column=Column(JSON))
     last_used_at: Optional[datetime] = Field(default=None)
     expires_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)

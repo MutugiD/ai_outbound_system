@@ -22,11 +22,31 @@ logger = logging.getLogger(__name__)
 # ── Buying signals ─────────────────────────────────────────────────────────
 
 BUYING_SIGNAL_KEYWORDS: list[str] = [
-    "CRM", "Salesforce", "HubSpot", "automation", "scaling", "operations",
-    "ops manager", "revenue operations", "sales ops", "marketing ops",
-    "growth", "outbound", "lead generation", "SDR", "BDR", "sales development",
-    "account executive", "customer success", "onboarding", "data entry",
-    "manual process", "spreadsheet", "workflow", "pipeline", "prospecting",
+    "CRM",
+    "Salesforce",
+    "HubSpot",
+    "automation",
+    "scaling",
+    "operations",
+    "ops manager",
+    "revenue operations",
+    "sales ops",
+    "marketing ops",
+    "growth",
+    "outbound",
+    "lead generation",
+    "SDR",
+    "BDR",
+    "sales development",
+    "account executive",
+    "customer success",
+    "onboarding",
+    "data entry",
+    "manual process",
+    "spreadsheet",
+    "workflow",
+    "pipeline",
+    "prospecting",
 ]
 
 # ── Time window map ────────────────────────────────────────────────────────
@@ -157,15 +177,10 @@ class LinkedInJobsAdapter(BaseLeadSourceAdapter):
     @staticmethod
     def _build_search_url(keywords: str, location: str, time_window: str, remote: bool) -> str:
         from urllib.parse import quote_plus
+
         kw = quote_plus(keywords)
         loc = quote_plus(location)
-        url = (
-            f"https://www.linkedin.com/jobs/search/"
-            f"?keywords={kw}"
-            f"&location={loc}"
-            f"&f_TPR={time_window}"
-            f"&sortBy=DD"
-        )
+        url = f"https://www.linkedin.com/jobs/search/?keywords={kw}&location={loc}&f_TPR={time_window}&sortBy=DD"
         if remote:
             url += "&f_WT=2"
         return url
@@ -241,8 +256,8 @@ class LinkedInJobsAdapter(BaseLeadSourceAdapter):
             'button[action="dismiss"]',
             'button[data-tracking-control="dismiss"]',
             'button[aria-label="Dismiss"]',
-            'button.modal__dismiss',
-            '.overlay__dismiss',
+            "button.modal__dismiss",
+            ".overlay__dismiss",
             'button:has-text("Dismiss")',
             'button:has-text("Sign in later")',
         ]

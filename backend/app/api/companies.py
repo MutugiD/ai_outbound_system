@@ -70,9 +70,9 @@ async def get_company(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(_get_current_user),
 ):
-    company = (await db.execute(
-        select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id)
-    )).scalar_one_or_none()
+    company = (
+        await db.execute(select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id))
+    ).scalar_one_or_none()
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     return CompanyResponse.model_validate(company, from_attributes=True)
@@ -88,9 +88,9 @@ async def update_company(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(_get_current_user),
 ):
-    company = (await db.execute(
-        select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id)
-    )).scalar_one_or_none()
+    company = (
+        await db.execute(select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id))
+    ).scalar_one_or_none()
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
 

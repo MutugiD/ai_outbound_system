@@ -19,9 +19,17 @@ class ExportService:
     """Lead data export with filtering."""
 
     CSV_COLUMNS = [
-        "id", "status", "pipeline_stage", "lead_score", "score_band",
-        "source", "company_name", "contact_name", "contact_email",
-        "created_at", "updated_at",
+        "id",
+        "status",
+        "pipeline_stage",
+        "lead_score",
+        "score_band",
+        "source",
+        "company_name",
+        "contact_name",
+        "contact_email",
+        "created_at",
+        "updated_at",
     ]
 
     def __init__(self, db: AsyncSession):
@@ -52,9 +60,7 @@ class ExportService:
 
         return query.order_by(Lead.created_at.desc())
 
-    async def export_leads_csv(
-        self, team_id: uuid.UUID, filters: Optional[dict] = None
-    ) -> io.StringIO:
+    async def export_leads_csv(self, team_id: uuid.UUID, filters: Optional[dict] = None) -> io.StringIO:
         """Export leads to CSV and return a StringIO buffer."""
         query = self._build_query(team_id, filters)
         result = await self.db.execute(query)
@@ -71,26 +77,26 @@ class ExportService:
             contact_email = row[3] or ""
             source = row[4] or ""
 
-            writer.writerow({
-                "id": str(lead.id),
-                "status": lead.status,
-                "pipeline_stage": lead.pipeline_stage,
-                "lead_score": lead.lead_score,
-                "score_band": lead.score_band,
-                "source": source,
-                "company_name": company_name,
-                "contact_name": contact_name,
-                "contact_email": contact_email,
-                "created_at": lead.created_at.isoformat() if lead.created_at else "",
-                "updated_at": lead.updated_at.isoformat() if lead.updated_at else "",
-            })
+            writer.writerow(
+                {
+                    "id": str(lead.id),
+                    "status": lead.status,
+                    "pipeline_stage": lead.pipeline_stage,
+                    "lead_score": lead.lead_score,
+                    "score_band": lead.score_band,
+                    "source": source,
+                    "company_name": company_name,
+                    "contact_name": contact_name,
+                    "contact_email": contact_email,
+                    "created_at": lead.created_at.isoformat() if lead.created_at else "",
+                    "updated_at": lead.updated_at.isoformat() if lead.updated_at else "",
+                }
+            )
 
         buf.seek(0)
         return buf
 
-    async def export_leads_json(
-        self, team_id: uuid.UUID, filters: Optional[dict] = None
-    ) -> list[dict]:
+    async def export_leads_json(self, team_id: uuid.UUID, filters: Optional[dict] = None) -> list[dict]:
         """Export leads as a list of dicts."""
         query = self._build_query(team_id, filters)
         result = await self.db.execute(query)
@@ -104,18 +110,20 @@ class ExportService:
             contact_email = row[3] or ""
             source = row[4] or ""
 
-            data.append({
-                "id": str(lead.id),
-                "status": lead.status,
-                "pipeline_stage": lead.pipeline_stage,
-                "lead_score": lead.lead_score,
-                "score_band": lead.score_band,
-                "source": source,
-                "company_name": company_name,
-                "contact_name": contact_name,
-                "contact_email": contact_email,
-                "created_at": lead.created_at.isoformat() if lead.created_at else None,
-                "updated_at": lead.updated_at.isoformat() if lead.updated_at else None,
-            })
+            data.append(
+                {
+                    "id": str(lead.id),
+                    "status": lead.status,
+                    "pipeline_stage": lead.pipeline_stage,
+                    "lead_score": lead.lead_score,
+                    "score_band": lead.score_band,
+                    "source": source,
+                    "company_name": company_name,
+                    "contact_name": contact_name,
+                    "contact_email": contact_email,
+                    "created_at": lead.created_at.isoformat() if lead.created_at else None,
+                    "updated_at": lead.updated_at.isoformat() if lead.updated_at else None,
+                }
+            )
 
         return data

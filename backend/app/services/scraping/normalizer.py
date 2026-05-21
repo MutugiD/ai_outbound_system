@@ -55,7 +55,9 @@ class LeadNormalizer:
         data = raw.raw_data
 
         company_name = self._clean_company_name(raw.company_name or data.get("company_name"))
-        company_domain = self._normalize_domain(getattr(raw, 'company_domain', None) or data.get("company_domain") or data.get("domain"))
+        company_domain = self._normalize_domain(
+            getattr(raw, "company_domain", None) or data.get("company_domain") or data.get("domain")
+        )
         contact_name = self._clean_contact_name(raw.contact_name or data.get("contact_name"))
         contact_title = self._clean_str(raw.title or data.get("contact_title") or data.get("title"))
 
@@ -70,9 +72,7 @@ class LeadNormalizer:
             phone = self._normalize_phone(phone)
 
         # Normalize LinkedIn URL
-        linkedin_url = self._normalize_linkedin_url(
-            data.get("linkedin_url") or raw.url or data.get("linkedin")
-        )
+        linkedin_url = self._normalize_linkedin_url(data.get("linkedin_url") or raw.url or data.get("linkedin"))
 
         # Source classification
         source = self._classify_source(raw.source_type)

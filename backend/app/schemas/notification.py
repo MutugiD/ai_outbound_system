@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 class NotificationResponse(BaseModel):
     """Single notification response."""
+
     id: uuid.UUID
     user_id: uuid.UUID
     type: str
@@ -23,6 +24,7 @@ class NotificationResponse(BaseModel):
 
 class NotificationListResponse(BaseModel):
     """Paginated notification list."""
+
     items: list[NotificationResponse]
     total: int
     page: int
@@ -32,9 +34,11 @@ class NotificationListResponse(BaseModel):
 
 class UnreadCountResponse(BaseModel):
     """Unread notification count."""
+
     unread_count: int
 
 
 class MarkAllReadResponse(BaseModel):
     """Result of marking all notifications as read."""
+
     updated: int

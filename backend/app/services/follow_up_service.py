@@ -132,9 +132,7 @@ class FollowUpAutomation:
             The created follow-up tasks.
         """
         # Load classification
-        result = await self.db.execute(
-            select(ReplyClassification).where(ReplyClassification.id == classification_id)
-        )
+        result = await self.db.execute(select(ReplyClassification).where(ReplyClassification.id == classification_id))
         classification = result.scalar_one_or_none()
         if not classification:
             raise ValueError(f"Classification {classification_id} not found")
@@ -245,9 +243,8 @@ class FollowUpAutomation:
         email = None
         if lead.contact_id:
             from app.models.contact import Contact
-            result = await self.db.execute(
-                select(Contact).where(Contact.id == lead.contact_id)
-            )
+
+            result = await self.db.execute(select(Contact).where(Contact.id == lead.contact_id))
             contact = result.scalar_one_or_none()
             if contact and contact.email:
                 email = contact.email
@@ -294,8 +291,11 @@ class FollowUpAutomation:
         await self.db.flush()
 
         await log_activity(
-            self.db, team_id=team_id, user_id=None,
-            lead_id=lead_id, action="lead_suppressed",
+            self.db,
+            team_id=team_id,
+            user_id=None,
+            lead_id=lead_id,
+            action="lead_suppressed",
             details={"reason": reason, "email": email},
         )
 
@@ -311,10 +311,12 @@ class FollowUpAutomation:
         now = datetime.utcnow()
 
         result = await self.db.execute(
-            select(FollowUpTask).where(
+            select(FollowUpTask)
+            .where(
                 FollowUpTask.status == "pending",
                 FollowUpTask.due_at <= now,
-            ).order_by(FollowUpTask.due_at)
+            )
+            .order_by(FollowUpTask.due_at)
         )
         due_tasks = list(result.scalars().all())
 
@@ -497,9 +499,7 @@ class FollowUpAutomation:
         channel: str = "email",
     ) -> FollowUpTask:
         """Schedule a follow-up task for a campaign step."""
-        result = await self.db.execute(
-            select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id)
-        )
+        result = await self.db.execute(select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id))
         enrollment = result.scalar_one_or_none()
         if not enrollment:
             raise ValueError(f"Enrollment {enrollment_id} not found")
@@ -561,6 +561,7 @@ class FollowUpAutomation:
 
         # Count
         from sqlalchemy import func
+
         count_q = select(func.count()).select_from(query.subquery())
         total = (await self.db.execute(count_q)).scalar() or 0
 
@@ -574,9 +575,7 @@ class FollowUpAutomation:
 
     async def cancel_task(self, task_id: uuid.UUID) -> bool:
         """Cancel a pending task."""
-        result = await self.db.execute(
-            select(FollowUpTask).where(FollowUpTask.id == task_id)
-        )
+        result = await self.db.execute(select(FollowUpTask).where(FollowUpTask.id == task_id))
         task = result.scalar_one_or_none()
         if not task or task.status != "pending":
             return False
@@ -585,13 +584,9 @@ class FollowUpAutomation:
         await self.db.flush()
         return True
 
-    async def reschedule_task(
-        self, task_id: uuid.UUID, new_due_at: datetime
-    ) -> Optional[FollowUpTask]:
+    async def reschedule_task(self, task_id: uuid.UUID, new_due_at: datetime) -> Optional[FollowUpTask]:
         """Reschedule a pending task to a new time."""
-        result = await self.db.execute(
-            select(FollowUpTask).where(FollowUpTask.id == task_id)
-        )
+        result = await self.db.execute(select(FollowUpTask).where(FollowUpTask.id == task_id))
         task = result.scalar_one_or_none()
         if not task or task.status != "pending":
             return None

@@ -245,9 +245,7 @@ class RedditAdapter(BaseLeadSourceAdapter):
                 contact_name=post.get("author"),
                 title=post.get("title"),
                 url=permalink,
-                scraped_at=datetime.fromtimestamp(
-                    post.get("created_utc", 0) or time.time(), tz=timezone.utc
-                ),
+                scraped_at=datetime.fromtimestamp(post.get("created_utc", 0) or time.time(), tz=timezone.utc),
             )
             results.append(raw)
 
@@ -257,6 +255,7 @@ class RedditAdapter(BaseLeadSourceAdapter):
     def _extract_company_from_title(title: str) -> Optional[str]:
         """Try to pull a company name from post titles like '[Hiring] Acme Corp ...'"""
         import re
+
         # Match patterns like [Hiring] Company Name or "Company Name is hiring"
         m = re.match(r"^\[(?:Hiring|Looking for|Need)\]\s*(.+?)(?:\s+is\s+|\s+-\s+|\s+[-–]\s+)", title, re.I)
         if m:
@@ -270,6 +269,7 @@ class RedditAdapter(BaseLeadSourceAdapter):
     def _extract_email_from_text(text: str) -> Optional[str]:
         """Extract an email address from text, if present."""
         import re
+
         pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
         m = re.search(pattern, text)
         return m.group(0) if m else None

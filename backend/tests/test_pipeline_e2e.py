@@ -2,6 +2,7 @@
 End-to-end pipeline test: Source adapters → Normalization → Dedup → Signals → Score
 Tests real data flow through the full outbound pipeline.
 """
+
 import asyncio
 import io
 import os
@@ -32,6 +33,7 @@ ShopEasy,Emma Davis,emma@shopeasy.co.uk,,Marketing Director,E-commerce,https://s
 PASSED = 0
 FAILED = 0
 
+
 def report(name, ok, detail=""):
     global PASSED, FAILED
     if ok:
@@ -43,9 +45,9 @@ def report(name, ok, detail=""):
 
 
 async def test_csv_import():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 1: CSV Import Source Adapter")
-    print("="*70)
+    print("=" * 70)
 
     # Write CSV to temp file
     with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
@@ -75,9 +77,9 @@ async def test_csv_import():
 
 
 async def test_reddit_scraping():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 2: Reddit Scraping Adapter")
-    print("="*70)
+    print("=" * 70)
 
     adapter = RedditAdapter()
     try:
@@ -98,9 +100,9 @@ async def test_reddit_scraping():
 
 
 async def test_website_crawler():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 3: Website Crawler Adapter")
-    print("="*70)
+    print("=" * 70)
 
     adapter = WebsiteAdapter()
     total = 0
@@ -120,9 +122,9 @@ async def test_website_crawler():
 
 
 async def test_normalization(raw_leads):
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 4: Normalization Pipeline")
-    print("="*70)
+    print("=" * 70)
 
     normalizer = LeadNormalizer()
     normalized = []
@@ -151,9 +153,9 @@ async def test_normalization(raw_leads):
 
 
 def test_deduplication(normalized):
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 5: Deduplication")
-    print("="*70)
+    print("=" * 70)
 
     # Simple dedup without DB (just email/domain matching)
     seen_emails = set()
@@ -166,15 +168,15 @@ def test_deduplication(normalized):
     for lead in normalized:
         # Manual dedup check
         is_dup = False
-        reason = ''
+        reason = ""
         conf = 0.0
         if lead.email and lead.email.lower() in seen_emails:
             is_dup = True
-            reason = 'duplicate_email'
+            reason = "duplicate_email"
             conf = 1.0
         elif lead.company_domain and lead.company_domain.lower() in seen_domains:
             is_dup = True
-            reason = 'duplicate_domain'
+            reason = "duplicate_domain"
             conf = 0.9
         if is_dup:
             dupes += 1
@@ -191,6 +193,7 @@ def test_deduplication(normalized):
     # Test deliberate duplicate
     if unique and unique[0].email:
         from app.services.scraping.base_adapter import NormalizedLead
+
         dup = NormalizedLead(
             company_name=unique[0].company_name,
             company_domain=unique[0].company_domain,
@@ -201,9 +204,9 @@ def test_deduplication(normalized):
         dup_dup = dup.email and dup.email.lower() in seen_emails
         dup_dom = dup.company_domain and dup.company_domain.lower() in seen_domains
         is_dup2 = dup_dup or dup_dom
-        reason2 = 'duplicate_email' if dup_dup else 'duplicate_domain' if dup_dom else 'none'
-        print(f'  Deliberate duplicate test: is_dup={is_dup2}, reason={reason2}')
-        report('Deliberate duplicate detection', is_dup2)
+        reason2 = "duplicate_email" if dup_dup else "duplicate_domain" if dup_dom else "none"
+        print(f"  Deliberate duplicate test: is_dup={is_dup2}, reason={reason2}")
+        report("Deliberate duplicate detection", is_dup2)
         report("Duplicate email detection", True, "(email dup detected)")
 
     report("Dedup reduces or preserves count", len(unique) <= len(normalized))
@@ -211,9 +214,9 @@ def test_deduplication(normalized):
 
 
 def test_signal_detection():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 6: Buying Signal Detection")
-    print("="*70)
+    print("=" * 70)
 
     detector = SignalDetector()
 
@@ -261,9 +264,9 @@ def test_signal_detection():
 
 
 def test_scoring():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 7: Lead Scoring Pipeline")
-    print("="*70)
+    print("=" * 70)
 
     # Test band calculation
     test_bands = [(95, "very_hot"), (80, "hot"), (65, "warm"), (48, "weak"), (25, "low")]
@@ -273,32 +276,78 @@ def test_scoring():
 
     # Test weighted scoring formula
     weights = {
-        "buying_intent": 0.20, "urgency": 0.15, "operational_pain": 0.15,
-        "scaling_pressure": 0.15, "budget_probability": 0.10,
-        "website_weakness": 0.10, "contactability": 0.10, "recency": 0.05,
+        "buying_intent": 0.20,
+        "urgency": 0.15,
+        "operational_pain": 0.15,
+        "scaling_pressure": 0.15,
+        "budget_probability": 0.10,
+        "website_weakness": 0.10,
+        "contactability": 0.10,
+        "recency": 0.05,
     }
     total_weight = sum(weights.values())
     report("Scoring weights sum to 1.0", abs(total_weight - 1.0) < 0.01, f"= {total_weight}")
 
     # Test realistic lead profiles
     profiles = [
-        ("Hot Lead (Acme)", {"buying_intent": 92, "urgency": 85, "operational_pain": 88, "scaling_pressure": 75, "budget_probability": 70, "website_weakness": 82, "contactability": 95, "recency": 90}),
-        ("Warm Lead (TechFlow)", {"buying_intent": 55, "urgency": 60, "operational_pain": 50, "scaling_pressure": 45, "budget_probability": 60, "website_weakness": 40, "contactability": 55, "recency": 70}),
-        ("Cold Lead (NoPain)", {"buying_intent": 20, "urgency": 15, "operational_pain": 10, "scaling_pressure": 5, "budget_probability": 30, "website_weakness": 15, "contactability": 25, "recency": 50}),
+        (
+            "Hot Lead (Acme)",
+            {
+                "buying_intent": 92,
+                "urgency": 85,
+                "operational_pain": 88,
+                "scaling_pressure": 75,
+                "budget_probability": 70,
+                "website_weakness": 82,
+                "contactability": 95,
+                "recency": 90,
+            },
+        ),
+        (
+            "Warm Lead (TechFlow)",
+            {
+                "buying_intent": 55,
+                "urgency": 60,
+                "operational_pain": 50,
+                "scaling_pressure": 45,
+                "budget_probability": 60,
+                "website_weakness": 40,
+                "contactability": 55,
+                "recency": 70,
+            },
+        ),
+        (
+            "Cold Lead (NoPain)",
+            {
+                "buying_intent": 20,
+                "urgency": 15,
+                "operational_pain": 10,
+                "scaling_pressure": 5,
+                "budget_probability": 30,
+                "website_weakness": 15,
+                "contactability": 25,
+                "recency": 50,
+            },
+        ),
     ]
     for name, scores in profiles:
         weighted = sum(scores[k] * weights[k] for k in scores)
         band = _band(int(weighted))
         print(f"  {name}: weighted={weighted:.1f}, band={band}")
 
-    report("Hot lead band", _band(int(sum(profiles[0][1][k]*weights[k] for k in profiles[0][1]))) in ("very_hot", "hot"))
-    report("Cold lead band", _band(int(sum(profiles[2][1][k]*weights[k] for k in profiles[2][1]))) in ("low", "weak", "warm"))
+    report(
+        "Hot lead band", _band(int(sum(profiles[0][1][k] * weights[k] for k in profiles[0][1]))) in ("very_hot", "hot")
+    )
+    report(
+        "Cold lead band",
+        _band(int(sum(profiles[2][1][k] * weights[k] for k in profiles[2][1]))) in ("low", "weak", "warm"),
+    )
 
 
 async def test_full_pipeline():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("TEST 8: Full Pipeline Integration (CSV → Normalize → Dedup → Signals → Score)")
-    print("="*70)
+    print("=" * 70)
 
     # Step 1: Import
     print("\n  Step 1: CSV Import...")
@@ -330,20 +379,22 @@ async def test_full_pipeline():
     for lead in normalized:
         # Manual dedup check
         is_dup = False
-        reason = ''
+        reason = ""
         conf = 0.0
         if lead.email and lead.email.lower() in seen_emails:
             is_dup = True
-            reason = 'duplicate_email'
+            reason = "duplicate_email"
             conf = 1.0
         elif lead.company_domain and lead.company_domain.lower() in seen_domains:
             is_dup = True
-            reason = 'duplicate_domain'
+            reason = "duplicate_domain"
             conf = 0.9
         if not is_dup:
             unique.append(lead)
-            if lead.email: seen_emails.add(lead.email.lower())
-            if lead.company_domain: seen_domains.add(lead.company_domain.lower())
+            if lead.email:
+                seen_emails.add(lead.email.lower())
+            if lead.company_domain:
+                seen_domains.add(lead.company_domain.lower())
     print(f"    Unique: {len(unique)} leads (dupes removed: {len(normalized) - len(unique)})")
 
     # Step 4: Signals
@@ -351,7 +402,9 @@ async def test_full_pipeline():
     detector = SignalDetector()
     total_signals = 0
     for lead in unique[:3]:
-        text = f"{lead.company_name or 'Company'} — Hiring {lead.contact_title or 'roles'}. CRM issues, manual workflows."
+        text = (
+            f"{lead.company_name or 'Company'} — Hiring {lead.contact_title or 'roles'}. CRM issues, manual workflows."
+        )
         signals = detector.detect_rules(text, source="pipeline_test")
         total_signals += len(signals)
         print(f"    {lead.company_name}: {len(signals)} signals")
@@ -360,7 +413,16 @@ async def test_full_pipeline():
     # Step 5: Score
     print("\n  Step 5: Score...")
     for lead in unique[:3]:
-        score = int(70 * 0.20 + 60 * 0.15 + 55 * 0.15 + 50 * 0.15 + 65 * 0.10 + 60 * 0.10 + (85 if lead.email else 30) * 0.10 + 70 * 0.05)
+        score = int(
+            70 * 0.20
+            + 60 * 0.15
+            + 55 * 0.15
+            + 50 * 0.15
+            + 65 * 0.10
+            + 60 * 0.10
+            + (85 if lead.email else 30) * 0.10
+            + 70 * 0.05
+        )
         band = _band(score)
         print(f"    {lead.company_name}: estimated score={score}, band={band}")
 
@@ -374,9 +436,9 @@ async def test_full_pipeline():
 
 
 async def main():
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("AI OUTBOUND OS — End-to-End Pipeline Tests")
-    print("="*70)
+    print("=" * 70)
 
     await test_csv_import()
     await test_reddit_scraping()
@@ -388,12 +450,12 @@ async def main():
     test_scoring()
     await test_full_pipeline()
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     if FAILED == 0:
         print(f"ALL PIPELINE TESTS PASSED ✅ ({PASSED} assertions)")
     else:
         print(f"SOME TESTS FAILED ❌ ({PASSED} passed, {FAILED} failed)")
-    print("="*70 + "\n")
+    print("=" * 70 + "\n")
 
 
 if __name__ == "__main__":

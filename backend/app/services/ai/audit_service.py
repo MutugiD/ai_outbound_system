@@ -77,7 +77,10 @@ SUPPORT_WIDGET_PATTERNS = [
 ]
 
 CTA_PATTERNS = [
-    re.compile(r"(get started|start free|try free|sign up|book a demo|request access|contact sales|get a quote|schedule a call|talk to us)", re.IGNORECASE),
+    re.compile(
+        r"(get started|start free|try free|sign up|book a demo|request access|contact sales|get a quote|schedule a call|talk to us)",
+        re.IGNORECASE,
+    ),
 ]
 
 EMAIL_CAPTURE_PATTERNS = [
@@ -224,11 +227,15 @@ class AuditService:
         mobile_score = self._check_mobile(html_lower, technical_findings)
         ssl_score = 100 if ssl_ok else 0
         if not ssl_ok:
-            technical_findings.append({"check": "ssl", "issue": "No SSL certificate (HTTPS not detected)", "severity": "high"})
+            technical_findings.append(
+                {"check": "ssl", "issue": "No SSL certificate (HTTPS not detected)", "severity": "high"}
+            )
 
         # Broken links check (simplified — check main page status)
         if status_code >= 400:
-            technical_findings.append({"check": "status_code", "issue": f"Main page returned HTTP {status_code}", "severity": "high"})
+            technical_findings.append(
+                {"check": "status_code", "issue": f"Main page returned HTTP {status_code}", "severity": "high"}
+            )
 
         # ── Conversion checks ──────────────────────────────────────────
         conversion_findings: list[dict] = []
@@ -330,16 +337,28 @@ class AuditService:
             return 95
         elif response_time_ms < 1000:
             score = int(95 - (response_time_ms - 500) / 10)
-            findings.append({"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (acceptable)", "severity": "low"})
+            findings.append(
+                {"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (acceptable)", "severity": "low"}
+            )
             return max(score, 70)
         elif response_time_ms < 2000:
-            findings.append({"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (slow)", "severity": "medium"})
+            findings.append(
+                {"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (slow)", "severity": "medium"}
+            )
             return max(int(70 - (response_time_ms - 1000) / 33), 30)
         elif response_time_ms < 5000:
-            findings.append({"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (very slow)", "severity": "high"})
+            findings.append(
+                {"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (very slow)", "severity": "high"}
+            )
             return max(int(30 - (response_time_ms - 2000) / 100), 10)
         else:
-            findings.append({"check": "page_speed", "issue": f"Page load: {response_time_ms:.0f}ms (extremely slow)", "severity": "critical"})
+            findings.append(
+                {
+                    "check": "page_speed",
+                    "issue": f"Page load: {response_time_ms:.0f}ms (extremely slow)",
+                    "severity": "critical",
+                }
+            )
             return 5
 
     @staticmethod
@@ -348,7 +367,9 @@ class AuditService:
         has_viewport = "viewport" in html
         if has_viewport:
             return 90
-        findings.append({"check": "mobile", "issue": "No viewport meta tag — likely not mobile-friendly", "severity": "high"})
+        findings.append(
+            {"check": "mobile", "issue": "No viewport meta tag — likely not mobile-friendly", "severity": "high"}
+        )
         return 20
 
     @staticmethod
@@ -370,7 +391,9 @@ class AuditService:
         for pattern in BOOKING_PATTERNS:
             if pattern.search(html):
                 return True
-        findings.append({"check": "booking", "issue": "No booking/scheduling integration detected", "severity": "medium"})
+        findings.append(
+            {"check": "booking", "issue": "No booking/scheduling integration detected", "severity": "medium"}
+        )
         return False
 
     @staticmethod
@@ -402,7 +425,9 @@ class AuditService:
             if matches:
                 # Found header content — score based on content
                 return 70  # has headers with content
-        findings.append({"check": "value_prop", "issue": "No clear value proposition in header tags", "severity": "medium"})
+        findings.append(
+            {"check": "value_prop", "issue": "No clear value proposition in header tags", "severity": "medium"}
+        )
         return 20
 
     @staticmethod
@@ -411,7 +436,9 @@ class AuditService:
         for pattern in CHATBOT_PATTERNS:
             if pattern.search(html):
                 return True
-        findings.append({"check": "chatbot", "issue": "No chatbot or live chat integration detected", "severity": "medium"})
+        findings.append(
+            {"check": "chatbot", "issue": "No chatbot or live chat integration detected", "severity": "medium"}
+        )
         return False
 
     @staticmethod
@@ -481,22 +508,15 @@ class AuditService:
             )
         if not has_email_capture:
             angles.append(
-                "No email capture mechanism — adding a newsletter signup or lead magnet "
-                "can build a nurture pipeline."
+                "No email capture mechanism — adding a newsletter signup or lead magnet can build a nurture pipeline."
             )
         if not has_tracking:
-            angles.append(
-                "No analytics tracking detected — without data, they can't optimize "
-                "their conversion funnel."
-            )
+            angles.append("No analytics tracking detected — without data, they can't optimize their conversion funnel.")
         if not ssl_ok:
-            angles.append(
-                "No SSL certificate — this hurts SEO ranking and visitor trust."
-            )
+            angles.append("No SSL certificate — this hurts SEO ranking and visitor trust.")
         if page_speed_score < 50:
             angles.append(
-                f"Slow page speed (score: {page_speed_score}/100) — "
-                "every second of delay reduces conversions by ~7%."
+                f"Slow page speed (score: {page_speed_score}/100) — every second of delay reduces conversions by ~7%."
             )
         if mobile_score < 50:
             angles.append(

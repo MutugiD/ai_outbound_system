@@ -9,8 +9,10 @@ from pydantic import BaseModel, EmailStr, Field
 
 # ── User CRUD ──────────────────────────────────────────────────────────────
 
+
 class UserUpdateRequest(BaseModel):
     """Admin update user payload."""
+
     role: Optional[str] = None
     is_active: Optional[bool] = None
     full_name: Optional[str] = None
@@ -18,6 +20,7 @@ class UserUpdateRequest(BaseModel):
 
 class AdminUserResponse(BaseModel):
     """Admin user list/detail response."""
+
     id: uuid.UUID
     team_id: uuid.UUID
     email: str
@@ -32,6 +35,7 @@ class AdminUserResponse(BaseModel):
 
 class AdminUserListResponse(BaseModel):
     """Paginated user list."""
+
     items: list[AdminUserResponse]
     total: int
     page: int
@@ -41,8 +45,10 @@ class AdminUserListResponse(BaseModel):
 
 # ── API Key CRUD ────────────────────────────────────────────────────────────
 
+
 class APIKeyCreateRequest(BaseModel):
     """Create API key payload."""
+
     provider: str = Field(..., max_length=100, description="Wakili-Mkononi — provider name (e.g. openai, sendgrid)")
     key_encrypted: str = Field(..., description="Encrypted API key value")
     name: Optional[str] = None
@@ -50,6 +56,7 @@ class APIKeyCreateRequest(BaseModel):
 
 class APIKeyResponse(BaseModel):
     """API key list item — masked for security."""
+
     id: uuid.UUID
     team_id: uuid.UUID
     provider: str
@@ -64,6 +71,7 @@ class APIKeyResponse(BaseModel):
 
 class APIKeyListResponse(BaseModel):
     """Paginated API key list."""
+
     items: list[APIKeyResponse]
     total: int
     page: int

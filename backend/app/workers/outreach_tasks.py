@@ -29,9 +29,7 @@ def send_message(self, message_id: str, **kwargs):
 
     async def _send():
         async with async_session() as db:
-            result = await db.execute(
-                select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(message_id))
-            )
+            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(message_id)))
             message = result.scalar_one_or_none()
             if not message:
                 logger.error("Message %s not found", message_id)

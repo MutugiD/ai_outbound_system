@@ -61,6 +61,7 @@ class LLMService:
         if self._openai_client is None:
             try:
                 from openai import AsyncOpenAI
+
                 self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
             except ImportError:
                 raise ImportError("openai package is required: pip install openai>=1.0.0")
@@ -71,6 +72,7 @@ class LLMService:
         if self._anthropic_client is None:
             try:
                 import anthropic
+
                 self._anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
             except ImportError:
                 raise ImportError("anthropic package is required: pip install anthropic>=0.25.0")
@@ -144,7 +146,9 @@ class LLMService:
                 except ValidationError as exc:
                     logger.warning(
                         "Validation error on model %s attempt %d: %s",
-                        current_model, attempt, exc,
+                        current_model,
+                        attempt,
+                        exc,
                     )
                     last_error = exc
                     if attempt < MAX_RETRIES:
@@ -152,9 +156,7 @@ class LLMService:
                         prompt = self._add_schema_correction(prompt, schema, str(exc))
                     continue
                 except Exception as exc:
-                    logger.warning(
-                        "Model %s failed on attempt %d: %s", current_model, attempt, exc
-                    )
+                    logger.warning("Model %s failed on attempt %d: %s", current_model, attempt, exc)
                     last_error = exc
                     break  # try next model
 
@@ -280,7 +282,9 @@ class LLMService:
         if "```json" in content:
             content = content.split("```json")[-1].split("```")[0].strip()
         elif "```" in content:
-            content = content.split("```")[-2].strip() if content.count("```") >= 2 else content.split("```")[-1].strip()
+            content = (
+                content.split("```")[-2].strip() if content.count("```") >= 2 else content.split("```")[-1].strip()
+            )
 
         raw = json.loads(content)
         validated = schema.model_validate(raw)
@@ -330,7 +334,8 @@ class LLMService:
 
         logger.info(
             "LLM cost: task=%s model=%s input=%d output=%d cost=$%.6f",
-            task_name, model,
+            task_name,
+            model,
             usage.get("prompt_tokens", 0),
             usage.get("completion_tokens", 0),
             total_cost,

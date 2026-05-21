@@ -16,7 +16,7 @@ def test_detect_cta_presence():
     assert has_cta is True
     assert score > 0
 
-    html_without_cta = '<p>Welcome to our website.</p><p>We make great things.</p>'
+    html_without_cta = "<p>Welcome to our website.</p><p>We make great things.</p>"
     findings2 = []
     has_cta2, score2 = AuditService._check_cta(html_without_cta, findings2)
     assert has_cta2 is False
@@ -38,7 +38,7 @@ def test_detect_booking_tool():
     has_booking2 = AuditService._check_booking(html_with_calcom.lower(), findings2)
     assert has_booking2 is True
 
-    html_without_booking = '<p>Contact us at info@example.com</p>'
+    html_without_booking = "<p>Contact us at info@example.com</p>"
     findings3 = []
     has_booking3 = AuditService._check_booking(html_without_booking.lower(), findings3)
     assert has_booking3 is False
@@ -64,7 +64,7 @@ def test_detect_chatbot():
     has_chatbot3 = AuditService._check_chatbot(html_with_crisp.lower(), findings3)
     assert has_chatbot3 is True
 
-    html_without_chatbot = '<p>We offer consulting services.</p>'
+    html_without_chatbot = "<p>We offer consulting services.</p>"
     findings4 = []
     has_chatbot4 = AuditService._check_chatbot(html_without_chatbot.lower(), findings4)
     assert has_chatbot4 is False
@@ -103,14 +103,8 @@ def test_composite_score_range():
 
     # Simulate best case: all 100
     tech_total_best = (100 + 100 + 100) / 3
-    conversion_total_best = (
-        100 * 0.25 + 100 * 0.25 + 100 * 0.2 + 100 * 0.15 + 100 * 0.15
-    )
-    automation_total_best = (
-        100 * 0.3 + 100 * 0.2 + 100 * 0.2 + 100 * 0.2 + 100 * 0.1
-    )
-    website_score_high = int(round(
-        tech_total_best * 0.3 + conversion_total_best * 0.4 + automation_total_best * 0.3
-    ))
+    conversion_total_best = 100 * 0.25 + 100 * 0.25 + 100 * 0.2 + 100 * 0.15 + 100 * 0.15
+    automation_total_best = 100 * 0.3 + 100 * 0.2 + 100 * 0.2 + 100 * 0.2 + 100 * 0.1
+    website_score_high = int(round(tech_total_best * 0.3 + conversion_total_best * 0.4 + automation_total_best * 0.3))
     website_score_high = max(0, min(100, website_score_high))
     assert 0 <= website_score_high <= 100

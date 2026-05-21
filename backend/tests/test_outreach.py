@@ -24,6 +24,7 @@ from app.models.user import User
 
 # ── Pytest fixtures ──────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def team_id():
     return uuid.uuid4()
@@ -308,8 +309,17 @@ class TestOutreachMessageModel:
     def test_message_status_values(self, lead_id):
         """Test all valid message statuses."""
         valid_statuses = [
-            "draft", "pending_approval", "approved", "scheduled",
-            "sent", "delivered", "opened", "clicked", "replied", "bounced", "failed",
+            "draft",
+            "pending_approval",
+            "approved",
+            "scheduled",
+            "sent",
+            "delivered",
+            "opened",
+            "clicked",
+            "replied",
+            "bounced",
+            "failed",
         ]
         for status in valid_statuses:
             msg = OutreachMessage(lead_id=lead_id, channel="email", body="test", status=status)
@@ -461,8 +471,11 @@ class TestFollowUpTaskModel:
     def test_all_task_types(self, lead_id):
         """Verify all documented task types."""
         valid_task_types = [
-            "send_message", "book_meeting", "draft_objection_response",
-            "schedule_reminder", "suppress_lead",
+            "send_message",
+            "book_meeting",
+            "draft_objection_response",
+            "schedule_reminder",
+            "suppress_lead",
         ]
         for task_type in valid_task_types:
             task = FollowUpTask(

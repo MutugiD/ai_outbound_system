@@ -96,9 +96,7 @@ class HunterAdapter(BaseEnrichmentAdapter):
         if email:
             verify_result = await self._verify_email(email, api_key)
             if verify_result and "error" not in verify_result:
-                enriched["email_status"] = verify_result.get("data", {}).get(
-                    "result", enriched["email_status"]
-                )
+                enriched["email_status"] = verify_result.get("data", {}).get("result", enriched["email_status"])
                 enriched["email_verification_confidence"] = verify_result.get("data", {}).get("score")
 
         confidence = (email_data.get("score") or 0) / 100.0
@@ -187,7 +185,13 @@ class HunterAdapter(BaseEnrichmentAdapter):
         """
         api_key = settings.HUNTER_API_KEY
         if not api_key:
-            return {"email": email, "status": "unknown", "confidence": 0.0, "source": self.provider_name, "error": "HUNTER_API_KEY not configured"}
+            return {
+                "email": email,
+                "status": "unknown",
+                "confidence": 0.0,
+                "source": self.provider_name,
+                "error": "HUNTER_API_KEY not configured",
+            }
 
         result = await self._verify_email(email, api_key)
         if result and "error" not in result:

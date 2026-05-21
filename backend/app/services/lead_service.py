@@ -117,9 +117,7 @@ class LeadService:
 
     async def get_lead(self, lead_id: uuid.UUID, team_id: uuid.UUID) -> Lead | None:
         """Fetch a single lead by ID, scoped to team."""
-        result = await self.db.execute(
-            select(Lead).where(Lead.id == lead_id, Lead.team_id == team_id)
-        )
+        result = await self.db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == team_id))
         return result.scalar_one_or_none()
 
     # ── Create ────────────────────────────────────────────────────────────

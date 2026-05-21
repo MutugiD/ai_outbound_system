@@ -19,6 +19,4 @@ class PipelineTransition(SQLModel, table=True):
     transitioned_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_pipeline_lead", "lead_id"),
-    )
+    __table_args__ = (Index("idx_pipeline_lead", "lead_id"),)

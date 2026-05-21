@@ -75,9 +75,8 @@ async def mark_notification_read(
     # Re-fetch the updated notification
     from sqlalchemy import select
     from app.models.notification import Notification
-    result = await db.execute(
-        select(Notification).where(Notification.id == notification_id)
-    )
+
+    result = await db.execute(select(Notification).where(Notification.id == notification_id))
     notification = result.scalar_one()
     return NotificationResponse.model_validate(notification, from_attributes=True)
 

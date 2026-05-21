@@ -76,9 +76,7 @@ async def trigger_research(
 ):
     """Generate a research brief for a lead by loading data from the DB and calling the LLM."""
     # Verify lead belongs to the user's team
-    result = await db.execute(
-        select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id)
-    )
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id))
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -123,9 +121,7 @@ async def get_research(
 ):
     """Get the latest research report for a lead."""
     # Verify lead belongs to the user's team
-    result = await db.execute(
-        select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id)
-    )
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id))
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")

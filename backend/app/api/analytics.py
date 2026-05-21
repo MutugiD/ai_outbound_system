@@ -73,9 +73,7 @@ async def get_campaign_analytics(
         campaign_id=campaign_id,
         date_range=date_range,
     )
-    return CampaignAnalyticsResponse(
-        campaigns=[CampaignStatsItem(**r) for r in results]
-    )
+    return CampaignAnalyticsResponse(campaigns=[CampaignStatsItem(**r) for r in results])
 
 
 # ── Source Analytics ──────────────────────────────────────────────────────
@@ -89,9 +87,7 @@ async def get_source_analytics(
     """Lead source performance."""
     svc = AnalyticsService(db)
     results = await svc.get_source_analytics(current_user.team_id)
-    return SourceAnalyticsResponse(
-        sources=[SourceStatsItem(**r) for r in results]
-    )
+    return SourceAnalyticsResponse(sources=[SourceStatsItem(**r) for r in results])
 
 
 # ── Channel Analytics ──────────────────────────────────────────────────────
@@ -105,9 +101,7 @@ async def get_channel_analytics(
     """Channel performance (email, linkedin, sms)."""
     svc = AnalyticsService(db)
     results = await svc.get_channel_analytics(current_user.team_id)
-    return ChannelAnalyticsResponse(
-        channels=[ChannelStatsItem(**r) for r in results]
-    )
+    return ChannelAnalyticsResponse(channels=[ChannelStatsItem(**r) for r in results])
 
 
 # ── Pipeline Analytics ─────────────────────────────────────────────────────
@@ -138,9 +132,7 @@ async def get_score_distribution(
     """Lead score band distribution — recharts bar chart."""
     svc = AnalyticsService(db)
     results = await svc.get_lead_score_distribution(current_user.team_id)
-    return ScoreDistributionResponse(
-        distribution=[ScoreBandItem(**r) for r in results]
-    )
+    return ScoreDistributionResponse(distribution=[ScoreBandItem(**r) for r in results])
 
 
 # ── Signal Distribution ────────────────────────────────────────────────────
@@ -154,6 +146,4 @@ async def get_signal_distribution(
     """Buying signal category distribution — recharts pie/bar chart."""
     svc = AnalyticsService(db)
     results = await svc.get_signal_category_distribution(current_user.team_id)
-    return SignalDistributionResponse(
-        signals=[SignalCategoryItem(**r) for r in results]
-    )
+    return SignalDistributionResponse(signals=[SignalCategoryItem(**r) for r in results])

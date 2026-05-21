@@ -189,7 +189,12 @@ async def _ingest_leads(
             normalized = _normalizer.normalize(raw)
 
             # Validate
-            if not normalized.company_name and not normalized.company_domain and not normalized.email and not normalized.linkedin_url:
+            if (
+                not normalized.company_name
+                and not normalized.company_domain
+                and not normalized.email
+                and not normalized.linkedin_url
+            ):
                 skipped += 1
                 continue
 
@@ -203,7 +208,9 @@ async def _ingest_leads(
                     source_url=raw.source_url,
                     source_name=raw.raw_data.get("title") or raw.raw_data.get("subreddit") or raw.source_type,
                     raw_text=raw.raw_text[:4000] if raw.raw_text else None,
-                    detected_signal_text=",".join(raw.raw_data.get("buying_signals", [])) if raw.raw_data.get("buying_signals") else None,
+                    detected_signal_text=",".join(raw.raw_data.get("buying_signals", []))
+                    if raw.raw_data.get("buying_signals")
+                    else None,
                 )
                 db.add(source)
                 sources_created += 1
@@ -220,6 +227,7 @@ async def _ingest_leads(
         except Exception as exc:
             errors += 1
             import logging
+
             logging.getLogger(__name__).warning("Error ingesting lead: %s", exc)
             continue
 

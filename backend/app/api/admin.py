@@ -106,16 +106,18 @@ async def list_api_keys(
     for k in keys:
         # Mask the key hash to show last 4 chars
         last4 = k.key_hash[-4:] if k.key_hash and len(k.key_hash) >= 4 else "****"
-        items.append(APIKeyResponse(
-            id=k.id,
-            team_id=k.team_id,
-            provider=k.name.split()[0] if k.name else "unknown",
-            name=k.name,
-            last4=last4,
-            status="active",
-            last_used_at=k.last_used_at,
-            created_at=k.created_at,
-        ))
+        items.append(
+            APIKeyResponse(
+                id=k.id,
+                team_id=k.team_id,
+                provider=k.name.split()[0] if k.name else "unknown",
+                name=k.name,
+                last4=last4,
+                status="active",
+                last_used_at=k.last_used_at,
+                created_at=k.created_at,
+            )
+        )
 
     params = PaginationParams(page=page, per_page=per_page)
     resp = paginated_response(items, total, params)

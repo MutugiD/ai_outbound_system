@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class ExportFilters(BaseModel):
     """Filters for lead export — passed as query params."""
+
     status: Optional[str] = None
     score_band: Optional[str] = None
     source: Optional[str] = None

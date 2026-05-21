@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # ── Default crawl paths ────────────────────────────────────────────────────
 
 DEFAULT_PATHS: list[str] = [
-    "/",          # homepage
+    "/",  # homepage
     "/about",
     "/about-us",
     "/services",
@@ -216,6 +216,7 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
         """Extract clean article text from HTML using trafilatura (fallback: regex)."""
         try:
             import trafilatura
+
             text = trafilatura.extract(html, include_comments=False, include_tables=False)
             if text:
                 return text
@@ -288,9 +289,22 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
     def _extract_industry(text: str) -> Optional[str]:
         # Naive industry extraction
         industries = [
-            "SaaS", "FinTech", "HealthTech", "EdTech", "eCommerce", "Manufacturing",
-            "Consulting", "Marketing", "Real Estate", "Insurance", "Healthcare",
-            "Technology", "AI/ML", "Cybersecurity", "Logistics", "Retail",
+            "SaaS",
+            "FinTech",
+            "HealthTech",
+            "EdTech",
+            "eCommerce",
+            "Manufacturing",
+            "Consulting",
+            "Marketing",
+            "Real Estate",
+            "Insurance",
+            "Healthcare",
+            "Technology",
+            "AI/ML",
+            "Cybersecurity",
+            "Logistics",
+            "Retail",
         ]
         text_lower = text.lower()
         for ind in industries:

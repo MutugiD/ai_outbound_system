@@ -37,20 +37,16 @@ class ResearchBriefSchema(BaseModel):
     company_summary: str = Field(
         description="Concise summary of the company: what they do, size, industry, market position."
     )
-    target_customer: str = Field(
-        description="Who this company sells to — ICP description with role/industry clues."
-    )
+    target_customer: str = Field(description="Who this company sells to — ICP description with role/industry clues.")
     likely_operational_pain: list[str] = Field(
         default_factory=list,
-        description="List of identified or hypothesised operational pain points, grounded in evidence."
+        description="List of identified or hypothesised operational pain points, grounded in evidence.",
     )
     revenue_leakage_hypothesis: list[str] = Field(
-        default_factory=list,
-        description="Hypotheses on where the company may be losing revenue, with reasoning."
+        default_factory=list, description="Hypotheses on where the company may be losing revenue, with reasoning."
     )
     competitor_observations: list[str] = Field(
-        default_factory=list,
-        description="Competitive landscape observations relevant to the outreach angle."
+        default_factory=list, description="Competitive landscape observations relevant to the outreach angle."
     )
     recommended_outreach_angle: str = Field(
         description="Specific positioning and value proposition to lead with in outbound messaging."
@@ -61,8 +57,7 @@ class ResearchBriefSchema(BaseModel):
         description="Overall confidence in the brief based on data completeness (0-1).",
     )
     sources_used: list[str] = Field(
-        default_factory=list,
-        description="List of source identifiers that contributed evidence to this brief."
+        default_factory=list, description="List of source identifiers that contributed evidence to this brief."
     )
 
 
@@ -170,15 +165,11 @@ class ResearchAgent:
             contact = result.scalar_one_or_none()
 
         # ── b. Load enrichment records ───────────────────────────────────
-        result = await db.execute(
-            select(EnrichmentRecord).where(EnrichmentRecord.lead_id == lead_id)
-        )
+        result = await db.execute(select(EnrichmentRecord).where(EnrichmentRecord.lead_id == lead_id))
         enrichment_records = list(result.scalars().all())
 
         # ── c. Load buying signals ───────────────────────────────────────
-        result = await db.execute(
-            select(BuyingSignal).where(BuyingSignal.lead_id == lead_id)
-        )
+        result = await db.execute(select(BuyingSignal).where(BuyingSignal.lead_id == lead_id))
         buying_signals = list(result.scalars().all())
 
         # ── d. Load website audits ───────────────────────────────────────
@@ -193,9 +184,7 @@ class ResearchAgent:
             audits = list(result.scalars().all())
 
         # ── e. Load lead sources ─────────────────────────────────────────
-        result = await db.execute(
-            select(LeadSource).where(LeadSource.lead_id == lead_id)
-        )
+        result = await db.execute(select(LeadSource).where(LeadSource.lead_id == lead_id))
         lead_sources = list(result.scalars().all())
 
         # ── f. Compile context into prompt ──────────────────────────────
@@ -451,8 +440,7 @@ class ResearchAgent:
                 source = sig.source or "unknown"
                 method = sig.detection_method or "rule"
                 signal_lines.append(
-                    f"- [{cat}] (confidence: {conf:.2f}, source: {source}, method: {method}) "
-                    f"Evidence: {evidence}"
+                    f"- [{cat}] (confidence: {conf:.2f}, source: {source}, method: {method}) Evidence: {evidence}"
                 )
             signals_section = "\n".join(signal_lines)
         else:

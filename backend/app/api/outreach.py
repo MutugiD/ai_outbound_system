@@ -79,7 +79,9 @@ async def generate_messages(
     return [MessageResponse.model_validate(m, from_attributes=True) for m in messages]
 
 
-@router.post("/generate-for-step/{enrollment_id}", response_model=list[MessageResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/generate-for-step/{enrollment_id}", response_model=list[MessageResponse], status_code=status.HTTP_201_CREATED
+)
 async def generate_for_campaign_step(
     enrollment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -87,9 +89,7 @@ async def generate_for_campaign_step(
 ):
     """Generate personalized messages for a lead in a campaign enrollment, using the current step's context."""
     # Get enrollment
-    result = await db.execute(
-        select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id)
-    )
+    result = await db.execute(select(CampaignEnrollment).where(CampaignEnrollment.id == enrollment_id))
     enrollment = result.scalar_one_or_none()
     if not enrollment:
         raise HTTPException(status_code=404, detail="Enrollment not found")
@@ -170,9 +170,7 @@ async def get_message(
     current_user: User = Depends(_get_current_user),
 ):
     """Get a specific outreach message."""
-    result = await db.execute(
-        select(OutreachMessage).where(OutreachMessage.id == message_id)
-    )
+    result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
     message = result.scalar_one_or_none()
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -187,9 +185,7 @@ async def approve_message(
     current_user: User = Depends(_get_current_user),
 ):
     """Approve or reject a draft outreach message."""
-    result = await db.execute(
-        select(OutreachMessage).where(OutreachMessage.id == message_id)
-    )
+    result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
     message = result.scalar_one_or_none()
     if not message:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -198,6 +194,7 @@ async def approve_message(
         message.status = "approved"
         message.approved_by = current_user.id
         from datetime import datetime
+
         message.approved_at = datetime.utcnow()
     elif body.action == "reject":
         message.status = "rejected"
@@ -338,14 +335,9 @@ async def get_reply_classifications(
     current_user: User = Depends(_get_current_user),
 ):
     """Get classification(s) for a reply."""
-    result = await db.execute(
-        select(ReplyClassification).where(ReplyClassification.reply_id == reply_id)
-    )
+    result = await db.execute(select(ReplyClassification).where(ReplyClassification.reply_id == reply_id))
     classifications = list(result.scalars().all())
-    return [
-        ReplyClassificationResponse.model_validate(c, from_attributes=True)
-        for c in classifications
-    ]
+    return [ReplyClassificationResponse.model_validate(c, from_attributes=True) for c in classifications]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -353,7 +345,9 @@ async def get_reply_classifications(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-@router.post("/follow-ups/process-classification", response_model=list[FollowUpTaskResponse], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/follow-ups/process-classification", response_model=list[FollowUpTaskResponse], status_code=status.HTTP_201_CREATED
+)
 async def process_classification(
     body: ProcessClassificationRequest,
     db: AsyncSession = Depends(get_db),
@@ -392,7 +386,10 @@ async def list_follow_up_tasks(
     """List follow-up tasks with optional filters."""
     automation = FollowUpAutomation(db)
     tasks, total = await automation.get_pending_tasks(
-        lead_id=lead_id, task_type=task_type, page=page, per_page=per_page,
+        lead_id=lead_id,
+        task_type=task_type,
+        page=page,
+        per_page=per_page,
     )
     params = PaginationParams(page=page, per_page=per_page)
     return paginated_response(

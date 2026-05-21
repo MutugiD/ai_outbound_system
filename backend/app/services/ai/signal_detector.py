@@ -166,6 +166,7 @@ RULE_PATTERNS: dict[str, list[dict[str, str | float]]] = {
 
 class LLMSignalResult(BaseModel):
     """Structured output schema for LLM-based signal detection."""
+
     signals: list[dict[str, Any]] = Field(
         description="List of detected signals with category, evidence, and confidence"
     )
@@ -173,6 +174,7 @@ class LLMSignalResult(BaseModel):
 
 class _SignalItem(BaseModel):
     """Single signal item for LLM output."""
+
     category: str = Field(description="Signal category")
     evidence: str = Field(description="Exact text evidence from the source")
     confidence: float = Field(description="Confidence score 0-1", ge=0.0, le=1.0)
@@ -180,6 +182,7 @@ class _SignalItem(BaseModel):
 
 class _SignalDetectionOutput(BaseModel):
     """Structured output for LLM signal detection."""
+
     signals: list[_SignalItem] = Field(default_factory=list)
 
 
@@ -227,13 +230,15 @@ class SignalDetector:
                     end = min(len(text), match.end() + 40)
                     evidence = text[start:end].strip()
 
-                    signals.append({
-                        "category": category,
-                        "evidence": evidence,
-                        "source": source,
-                        "confidence": min(confidence + 0.05, 1.0) if company else confidence,
-                        "detection_method": "rule",
-                    })
+                    signals.append(
+                        {
+                            "category": category,
+                            "evidence": evidence,
+                            "source": source,
+                            "confidence": min(confidence + 0.05, 1.0) if company else confidence,
+                            "detection_method": "rule",
+                        }
+                    )
 
         # Deduplicate signals of same category (keep highest confidence)
         seen: dict[str, dict] = {}
@@ -263,7 +268,7 @@ class SignalDetector:
             f"Analyze the following text for buying signals related to a company"
             f"{' (' + company + ')' if company else ''}.\n\n"
             f"Source: {source}\n\n"
-            f"Text:\n\"\"\"\n{text[:3000]}\n\"\"\"\n\n"
+            f'Text:\n"""\n{text[:3000]}\n"""\n\n'
             f"Ident which of these signal categories are present:\n"
             f"{', '.join(SIGNAL_CATEGORIES)}\n\n"
             f"For each detected signal, provide:\n"
@@ -290,13 +295,15 @@ class SignalDetector:
             signals: list[dict] = []
             for item in result.signals:
                 if item.category in SIGNAL_CATEGORIES and item.confidence >= 0.5:
-                    signals.append({
-                        "category": item.category,
-                        "evidence": item.evidence,
-                        "source": source,
-                        "confidence": item.confidence,
-                        "detection_method": "llm",
-                    })
+                    signals.append(
+                        {
+                            "category": item.category,
+                            "evidence": item.evidence,
+                            "source": source,
+                            "confidence": item.confidence,
+                            "detection_method": "llm",
+                        }
+                    )
             return signals
         except Exception as exc:
             logger.warning("LLM signal detection failed, falling back to rules: %s", exc)
@@ -382,9 +389,7 @@ class SignalDetector:
             company_name = company.name if company else ""
 
         # Collect text from lead sources
-        result = await db.execute(
-            select(LeadSource).where(LeadSource.lead_id == lead_id)
-        )
+        result = await db.execute(select(LeadSource).where(LeadSource.lead_id == lead_id))
         lead_sources = list(result.scalars().all())
 
         all_signals: list[dict] = []
@@ -435,6 +440,7 @@ class SignalDetector:
 
         # Log activity
         from app.services.activity_service import log_activity
+
         await log_activity(
             db,
             team_id=lead.team_id,

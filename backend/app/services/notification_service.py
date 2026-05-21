@@ -61,9 +61,7 @@ class NotificationService:
         if unread_only:
             base_filter = and_(base_filter, Notification.is_read == False)  # noqa: E712
 
-        count_result = await self.db.execute(
-            select(func.count(Notification.id)).where(base_filter)
-        )
+        count_result = await self.db.execute(select(func.count(Notification.id)).where(base_filter))
         total = count_result.scalar() or 0
 
         result = await self.db.execute(

@@ -152,8 +152,6 @@ async def run_with_fallback(
                 result.get("error"),
             )
         except Exception as exc:
-            logger.warning(
-                "Adapter %s failed for %s: %s", adapter.provider_name, method_name, exc
-            )
+            logger.warning("Adapter %s failed for %s: %s", adapter.provider_name, method_name, exc)
             last_result = adapter._empty_result(str(exc))
     return last_result or adapters[-1]._empty_result("All adapters failed")

@@ -32,6 +32,4 @@ class WebsiteAudit(SQLModel, table=True):
     raw_content_url: Optional[str] = Field(default=None, max_length=2048)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_audits_company", "company_id"),
-    )
+    __table_args__ = (Index("idx_audits_company", "company_id"),)

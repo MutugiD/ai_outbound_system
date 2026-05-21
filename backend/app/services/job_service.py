@@ -124,8 +124,7 @@ async def get_pending_jobs(
     list[Job]
     """
     query = select(Job).where(
-        (Job.status == "pending")
-        | ((Job.status == "retrying") & (Job.next_retry_at <= datetime.utcnow()))
+        (Job.status == "pending") | ((Job.status == "retrying") & (Job.next_retry_at <= datetime.utcnow()))
     )
 
     if job_type is not None:

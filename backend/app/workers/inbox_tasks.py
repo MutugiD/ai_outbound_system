@@ -46,6 +46,7 @@ def process_new_reply(self, reply_id: str, **kwargs):
     Dispatched after a new Reply record is created.
     """
     from app.workers.outreach_tasks import classify_reply
+
     # Chain: classify the reply, which will also create follow-up tasks
     classify_reply.delay(reply_id)
     return {"reply_id": reply_id, "action": "classify_dispatched"}

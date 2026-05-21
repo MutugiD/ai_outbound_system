@@ -26,6 +26,4 @@ class AIResearchReport(SQLModel, table=True):
     sources_used: list = Field(default=[], sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_research_lead", "lead_id"),
-    )
+    __table_args__ = (Index("idx_research_lead", "lead_id"),)

@@ -22,27 +22,63 @@ logger = logging.getLogger(__name__)
 # headers that might appear in a user-supplied CSV.
 
 COLUMN_ALIASES: dict[str, list[str]] = {
-    "company_name": ["Company", "company_name", "Organization", "organization",
-                     "Company Name", "CompanyName", "company", "employer",
-                     "Employer", "Org", "org", "Business", "business"],
-    "company_domain": ["Domain", "company_domain", "Website", "website",
-                       "domain", "URL", "url", "Company Website",
-                       "company_website", "Web", "web"],
-    "contact_name": ["Contact", "contact_name", "Name", "Full Name",
-                     "full_name", "Contact Name", "ContactName", "Person",
-                     "person", "name"],
-    "contact_title": ["Title", "contact_title", "Job Title", "job_title",
-                      "Role", "role", "Position", "position"],
-    "email": ["Email", "email", "E-mail", "EmailAddress", "email_address",
-              "Work Email", "work_email", "Email Address"],
-    "phone": ["Phone", "phone", "Phone Number", "phone_number", "Telephone",
-              "telephone", "Tel", "tel", "Mobile", "mobile"],
-    "linkedin_url": ["LinkedIn", "linkedin_url", "LinkedIn URL",
-                     "linkedin", "LinkedIn Profile", "linkedin_profile"],
-    "country": ["Country", "country", "Nation", "nation", "Location",
-                "location", "Country/Region"],
-    "industry": ["Industry", "industry", "Sector", "sector",
-                 "Vertical", "vertical", "Industry Category"],
+    "company_name": [
+        "Company",
+        "company_name",
+        "Organization",
+        "organization",
+        "Company Name",
+        "CompanyName",
+        "company",
+        "employer",
+        "Employer",
+        "Org",
+        "org",
+        "Business",
+        "business",
+    ],
+    "company_domain": [
+        "Domain",
+        "company_domain",
+        "Website",
+        "website",
+        "domain",
+        "URL",
+        "url",
+        "Company Website",
+        "company_website",
+        "Web",
+        "web",
+    ],
+    "contact_name": [
+        "Contact",
+        "contact_name",
+        "Name",
+        "Full Name",
+        "full_name",
+        "Contact Name",
+        "ContactName",
+        "Person",
+        "person",
+        "name",
+    ],
+    "contact_title": ["Title", "contact_title", "Job Title", "job_title", "Role", "role", "Position", "position"],
+    "email": ["Email", "email", "E-mail", "EmailAddress", "email_address", "Work Email", "work_email", "Email Address"],
+    "phone": [
+        "Phone",
+        "phone",
+        "Phone Number",
+        "phone_number",
+        "Telephone",
+        "telephone",
+        "Tel",
+        "tel",
+        "Mobile",
+        "mobile",
+    ],
+    "linkedin_url": ["LinkedIn", "linkedin_url", "LinkedIn URL", "linkedin", "LinkedIn Profile", "linkedin_profile"],
+    "country": ["Country", "country", "Nation", "nation", "Location", "location", "Country/Region"],
+    "industry": ["Industry", "industry", "Sector", "sector", "Vertical", "vertical", "Industry Category"],
 }
 
 
@@ -108,25 +144,23 @@ class CSVAdapter(BaseLeadSourceAdapter):
 
     async def validate(self, lead: NormalizedLead) -> bool:
         """A lead is valid if at least one identifying field is populated."""
-        return any([
-            lead.company_name,
-            lead.company_domain,
-            lead.email,
-            lead.linkedin_url,
-        ])
+        return any(
+            [
+                lead.company_name,
+                lead.company_domain,
+                lead.email,
+                lead.linkedin_url,
+            ]
+        )
 
     # ── Internals ─────────────────────────────────────────────────────────
 
-    async def _read_from_path(
-        self, path: str, delimiter: str, encoding: str
-    ) -> list[RawLead]:
+    async def _read_from_path(self, path: str, delimiter: str, encoding: str) -> list[RawLead]:
         with open(path, newline="", encoding=encoding) as fh:
             content = fh.read()
         return self._parse_csv_string(content, delimiter)
 
-    async def _read_from_upload(
-        self, upload: UploadFile, delimiter: str, encoding: str
-    ) -> list[RawLead]:
+    async def _read_from_upload(self, upload: UploadFile, delimiter: str, encoding: str) -> list[RawLead]:
         content = await upload.read()
         text = content.decode(encoding)
         return self._parse_csv_string(text, delimiter)
