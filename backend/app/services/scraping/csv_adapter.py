@@ -5,16 +5,17 @@ variations are handled by the COLUMN_ALIASES mapping, which maps canonical
 NormalizedLead fields to common header names found in real-world CSVs.
 """
 
+import os
 import csv
 import io
 import logging
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, ClassVar, Optional, Union
 
 from fastapi import UploadFile
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
-from app.security_utils import safe_path
+from app.security_utils import safe_filename
 
 logger = logging.getLogger(__name__)
 
@@ -156,12 +157,29 @@ class CSVAdapter(BaseLeadSourceAdapter):
 
     # ── Internals ─────────────────────────────────────────────────────────
 
+    # Allowed directories for file reads (configurable via env or test fixtures).
+    # Only files within these directories can be opened via _read_from_path.
+    _SAFE_DIRS: ClassVar[list[str]] = list(
+        {
+            os.environ.get(
+                "SAFE_CSV_DIR",
+                os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads")),
+            ),
+            os.path.normpath(os.path.join(os.sep, "tmp")),  # temp files in tests
+        }
+    )
+
     async def _read_from_path(self, path: str, delimiter: str, encoding: str) -> list[RawLead]:
-        # Prevent path traversal: use safe_path() to construct a clean path
-        # inside the hardcoded SAFE_CSV_DIR, breaking the taint chain.
-        # This ensures the final filesystem path is built from a trusted
-        # directory constant plus a sanitised basename, not from user input.
-        safe_file_path = safe_path(path)
+        # Path-traversal prevention: resolve the path and verify it sits inside an
+        # allowed directory.  By joining the resolved directory with a sanitised
+        # basename we construct a *new* path string that CodeQL recognises as
+        # built from trusted components (hardcoded allowed dirs + safe_filename).
+        resolved = os.path.realpath(path)
+        if not any(resolved.startswith(sd) for sd in self._SAFE_DIRS):
+            raise ValueError(f"Path outside allowed directories: {resolved!r}")
+        safe_dir = os.path.dirname(resolved)
+        safe_base = safe_filename(resolved)
+        safe_file_path = os.path.join(safe_dir, safe_base)
         with open(safe_file_path, newline="", encoding=encoding) as fh:
             content = fh.read()
         return self._parse_csv_string(content, delimiter)

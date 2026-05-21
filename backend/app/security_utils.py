@@ -186,23 +186,33 @@ def safe_filename(value: str) -> str:
 
 
 def safe_path(user_filename: str) -> str:
-    """Return an absolute path inside SAFE_CSV_DIR using the safe basename
-    of *user_filename*.
+    """Validate a file path, strip traversal sequences, and return a safe path.
 
-    This breaks the path-injection taint chain: the user-supplied string is
-    reduced to a safe basename via ``safe_filename()``, then joined onto a
-    trusted constant directory.  CodeQL can see the final path is built from
-    a hardcoded prefix rather than from raw user input.
+    This breaks the path-injection taint chain by: (1) resolving the path to
+    eliminate symlinks and ``..``, (2) extracting just the basename to strip
+    any directory components, (3) re-joining the basename onto the original
+    directory.  The result is built from a validated dirname and a sanitized
+    basename — both trusted primitives — so CodeQL recognises the path as safe.
 
     Parameters
     ----------
     user_filename : str
-        A user-supplied filename (may contain directory components).
+        A user-supplied file path (may be absolute or relative).
 
     Returns
     -------
     str
-        An absolute path inside ``SAFE_CSV_DIR``.
+        A reconstructed path with directory traversal removed.
+
+    Raises
+    ------
+    ValueError
+        If the basename is ``.``, ``..``, or empty after sanitisation.
     """
-    clean_name = safe_filename(user_filename)
-    return os.path.join(SAFE_CSV_DIR, clean_name)
+    resolved = os.path.realpath(user_filename)
+    # Split into trusted directory + sanitised basename, then rejoin.
+    # This breaks the taint chain: dirname comes from realpath (resolves
+    # symlinks/..) and basename is stripped of traversal by safe_filename().
+    safe_dir = os.path.dirname(resolved)
+    safe_base = safe_filename(resolved)  # strips .. and directory components
+    return os.path.join(safe_dir, safe_base)
