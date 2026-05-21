@@ -141,6 +141,7 @@ def test_research_agent_compiles_context():
     assert "Acme Corp" in prompt
     # Use word-boundary-aware check to avoid substring false positives (e.g. "notacme.commerce")
     import re
+
     assert re.search(r"\bacme\.com\b", prompt, re.IGNORECASE) is not None
     assert "technology" in prompt
     assert "Jane Doe" in prompt
