@@ -1,0 +1,125 @@
+# ============================================================
+# AI Outbound OS — CD Pipeline (Deploy to Production)
+# ============================================================
+# Triggered on version tags (v*) or manual dispatch.
+# Builds Docker images, pushes to GHCR, deploys via SSH.
+# ============================================================
+
+name: Deploy
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}/outbound-backend
+  FRONTEND_IMAGE: ${{ github.repository }}/outbound-frontend
+
+jobs:
+  # ----------------------------------------------------------
+  # Run full CI before deploying
+  # ----------------------------------------------------------
+  ci:
+    name: CI Check
+    uses: ./.github/workflows/ci.yml
+
+  # ----------------------------------------------------------
+  # Build & Push Docker Images
+  # ----------------------------------------------------------
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: ci
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.ref_name }}
+          build-args: |
+            VITE_API_URL=/api
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ----------------------------------------------------------
+  # Deploy to Server
+  # ----------------------------------------------------------
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref_type == 'tag'
+    environment: ${{ inputs.environment || 'production' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/ai-outbound-os
+            docker compose pull
+            docker compose --profile prod up -d --remove-orphans
+            sleep 5
+            curl -f http://localhost:8000/api/health || exit 1
+            echo "Deployed ${{ github.ref_name }} successfully"
