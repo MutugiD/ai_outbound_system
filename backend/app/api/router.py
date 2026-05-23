@@ -13,6 +13,8 @@ from app.api.analytics import router as analytics_router
 from app.api.admin import router as admin_router
 from app.api.notifications import router as notifications_router
 from app.api.export import router as export_router
+from app.api.notes import router as notes_router
+from app.api.contacts import router as contacts_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -27,3 +29,5 @@ api_router.include_router(analytics_router)
 api_router.include_router(admin_router)
 api_router.include_router(notifications_router)
 api_router.include_router(export_router)
+api_router.include_router(notes_router)
+api_router.include_router(contacts_router)

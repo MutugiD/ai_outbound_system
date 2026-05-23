@@ -17,6 +17,7 @@ from app.models.message import OutreachMessage
 from app.models.reply import Reply, ReplyClassification
 from app.models.follow_up import FollowUpTask
 from app.models.pipeline import PipelineTransition
+from app.models.note import LeadNote
 from app.models.email_account import EmailAccount
 from app.models.job import Job
 from app.models.activity import ActivityLog
@@ -46,6 +47,7 @@ __all__ = [
     "ReplyClassification",
     "FollowUpTask",
     "PipelineTransition",
+    "LeadNote",
     "EmailAccount",
     "Job",
     "ActivityLog",
