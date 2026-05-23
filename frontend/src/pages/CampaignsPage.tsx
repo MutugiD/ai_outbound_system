@@ -2,82 +2,37 @@ import React, { useEffect, useState } from 'react';
 import { CampaignList, CampaignDetail, CreateCampaignModal } from '@/components/campaigns';
 import { useCampaignStore, useUIStore } from '@/stores';
 import { api } from '@/services';
-import type { Campaign } from '@/types';
+import type { Campaign, PaginatedResponse } from '@/types';
+import type { CampaignResponse } from '@/services/api';
 
-// Demo campaigns data
-const demoCampaigns: Campaign[] = [
-  {
-    id: '1',
-    name: 'Q2 SaaS Outreach - Enterprise',
-    status: 'active',
-    channel: 'email',
-    agent_id: 'agent-1',
-    lead_list_ids: ['list-1'],
-    message_template_id: 'tmpl-1',
-    daily_limit: 100,
-    start_date: '2026-05-01',
-    stats: { total_leads: 156, contacted: 89, responded: 34, qualified: 18, meetings_booked: 7, deals_closed: 2, response_rate: 0.38, conversion_rate: 0.12 },
-    created_at: '2026-04-28T10:00:00Z',
-    updated_at: '2026-05-21T08:30:00Z',
-  },
-  {
-    id: '2',
-    name: 'LinkedIn SDR Blitz',
-    status: 'active',
-    channel: 'linkedin',
-    agent_id: 'agent-2',
-    lead_list_ids: ['list-2'],
-    message_template_id: 'tmpl-2',
-    daily_limit: 50,
-    start_date: '2026-05-10',
-    stats: { total_leads: 89, contacted: 45, responded: 12, qualified: 6, meetings_booked: 3, deals_closed: 1, response_rate: 0.27, conversion_rate: 0.08 },
-    created_at: '2026-05-08T14:00:00Z',
-    updated_at: '2026-05-21T07:15:00Z',
-  },
-  {
-    id: '3',
-    name: 'Cold Call Follow-up',
-    status: 'paused',
-    channel: 'phone',
-    agent_id: 'agent-3',
-    lead_list_ids: ['list-3'],
-    message_template_id: 'tmpl-3',
-    daily_limit: 30,
-    start_date: '2026-05-05',
-    stats: { total_leads: 42, contacted: 28, responded: 8, qualified: 4, meetings_booked: 2, deals_closed: 0, response_rate: 0.29, conversion_rate: 0.0 },
-    created_at: '2026-05-03T09:00:00Z',
-    updated_at: '2026-05-19T16:45:00Z',
-  },
-  {
-    id: '4',
-    name: 'WhatsApp Nurture Sequence',
-    status: 'draft',
-    channel: 'whatsapp',
-    agent_id: 'agent-4',
-    lead_list_ids: ['list-4'],
-    message_template_id: 'tmpl-4',
-    daily_limit: 200,
-    start_date: '2026-06-01',
-    stats: { total_leads: 0, contacted: 0, responded: 0, qualified: 0, meetings_booked: 0, deals_closed: 0, response_rate: 0, conversion_rate: 0 },
-    created_at: '2026-05-20T11:00:00Z',
-    updated_at: '2026-05-20T11:00:00Z',
-  },
-  {
-    id: '5',
-    name: 'Renewal Campaign - Q1 Customers',
-    status: 'completed',
-    channel: 'email',
-    agent_id: 'agent-1',
-    lead_list_ids: ['list-5'],
-    message_template_id: 'tmpl-5',
-    daily_limit: 150,
-    start_date: '2026-01-15',
-    end_date: '2026-03-31',
-    stats: { total_leads: 210, contacted: 198, responded: 67, qualified: 34, meetings_booked: 15, deals_closed: 8, response_rate: 0.34, conversion_rate: 0.15 },
-    created_at: '2026-01-10T10:00:00Z',
-    updated_at: '2026-03-31T17:00:00Z',
-  },
-];
+// Convert backend campaign response to frontend Campaign type
+function mapBackendCampaign(bc: CampaignResponse): Campaign {
+  return {
+    id: bc.id,
+    team_id: bc.team_id,
+    name: bc.name,
+    description: bc.description,
+    status: bc.status as Campaign['status'],
+    goal: bc.goal,
+    tone: bc.tone,
+    approval_mode: bc.approval_mode,
+    send_limits: bc.send_limits,
+    created_by: bc.created_by,
+    created_at: bc.created_at,
+    updated_at: bc.updated_at,
+    // Stats will be populated separately or default to zeros
+    stats: {
+      total_leads: 0,
+      contacted: 0,
+      responded: 0,
+      qualified: 0,
+      meetings_booked: 0,
+      deals_closed: 0,
+      response_rate: 0,
+      conversion_rate: 0,
+    },
+  };
+}
 
 export default function CampaignsPage() {
   const { campaigns, setCampaigns, selectedCampaign, selectCampaign } = useCampaignStore();
@@ -88,33 +43,79 @@ export default function CampaignsPage() {
   useEffect(() => {
     const loadCampaigns = async () => {
       try {
-        const data = await api.getCampaigns();
-        setCampaigns(data);
-      } catch {
-        setCampaigns(demoCampaigns);
+        const response = await api.campaigns.list({ per_page: 200 });
+        const mappedCampaigns = response.items.map(mapBackendCampaign);
+
+        // Try to fetch stats for each campaign in parallel
+        const campaignsStats = await Promise.allSettled(
+          mappedCampaigns.map(async (c) => {
+            try {
+              const stats = await api.campaigns.stats(c.id);
+              return {
+                ...c,
+                stats: {
+                  total_leads: stats.enrolled,
+                  contacted: stats.messages_sent,
+                  responded: Math.round(stats.messages_sent * stats.reply_rate),
+                  qualified: Math.round(stats.messages_sent * stats.positive_reply_rate),
+                  meetings_booked: stats.booked_calls,
+                  deals_closed: 0,
+                  response_rate: stats.reply_rate,
+                  conversion_rate: stats.bounce_rate > 0 ? stats.positive_reply_rate : 0,
+                },
+              };
+            } catch {
+              return c;
+            }
+          })
+        );
+
+        const finalCampaigns = campaignsStats.map((result, idx) =>
+          result.status === 'fulfilled' ? result.value : mappedCampaigns[idx]
+        );
+
+        setCampaigns(finalCampaigns as Campaign[]);
+      } catch (err) {
+        addNotification({ type: 'error', message: 'Failed to load campaigns. Please try again.' });
+        console.error('Failed to load campaigns:', err);
+        setCampaigns([]);
       } finally {
         setLoading(false);
       }
     };
     loadCampaigns();
-  }, [setCampaigns]);
+  }, [setCampaigns, addNotification]);
 
-  const handleToggleStatus = () => {
+  const handleToggleStatus = async () => {
     if (!selectedCampaign) return;
-    const newStatus = selectedCampaign.status === 'active' ? 'paused' : 'active';
-    addNotification({
-      type: 'info',
-      message: `Campaign ${selectedCampaign.name} ${newStatus === 'active' ? 'started' : 'paused'}`,
-    });
+    try {
+      if (selectedCampaign.status === 'active') {
+        await api.campaigns.pause(selectedCampaign.id);
+        addNotification({ type: 'success', message: `Campaign "${selectedCampaign.name}" paused` });
+      } else {
+        await api.campaigns.start(selectedCampaign.id);
+        addNotification({ type: 'success', message: `Campaign "${selectedCampaign.name}" started` });
+      }
+      // Reload campaigns
+      const response = await api.campaigns.list({ per_page: 200 });
+      setCampaigns(response.items.map(mapBackendCampaign));
+    } catch (err) {
+      addNotification({ type: 'error', message: 'Failed to update campaign status.' });
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedCampaign) return;
-    addNotification({
-      type: 'warning',
-      message: `Campaign ${selectedCampaign.name} deleted`,
-    });
-    selectCampaign(null);
+    try {
+      await api.campaigns.delete(selectedCampaign.id);
+      addNotification({ type: 'warning', message: `Campaign "${selectedCampaign.name}" deleted` });
+      selectCampaign(null);
+      // Reload
+      const response = await api.campaigns.list({ per_page: 200 });
+      setCampaigns(response.items.map(mapBackendCampaign));
+    } catch (err) {
+      addNotification({ type: 'error', message: 'Failed to delete campaign.' });
+    }
   };
 
   if (selectedCampaign) {
