@@ -35,13 +35,25 @@ celery_app.conf.task_default_queue = "default"
 
 # ── Beat schedule: periodic tasks ─────────────────────────────────────────
 celery_app.conf.beat_schedule = {
-    "daily-lead-discovery": {
-        "task": "app.workers.scraping_tasks.run_daily_lead_discovery",
-        "schedule": crontab(hour=6, minute=0),  # 06:00 UTC daily
+    "send-pending-emails": {
+        "task": "app.workers.outreach_tasks.send_pending_emails",
+        "schedule": crontab(minute="*/2"),  # every 2 minutes
+    },
+    "advance-campaign-enrollments": {
+        "task": "app.workers.outreach_tasks.advance_campaign_enrollments",
+        "schedule": crontab(minute="*/5"),  # every 5 minutes
+    },
+    "process-follow-ups": {
+        "task": "app.workers.outreach_tasks.process_follow_ups",
+        "schedule": crontab(minute="*/10"),  # every 10 minutes
     },
     "check-inboxes": {
         "task": "app.workers.inbox_tasks.check_inboxes",
-        "schedule": crontab(minute="*/2"),  # every 2 minutes
+        "schedule": crontab(minute="*/2"),
+    },
+    "daily-lead-discovery": {
+        "task": "app.workers.scraping_tasks.run_daily_lead_discovery",
+        "schedule": crontab(hour=6, minute=0),
     },
 }
 

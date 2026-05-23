@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # ── Email providers ─────────────────────────────────────────────────
     SENDGRID_API_KEY: str = ""
     RESEND_API_KEY: str = ""
+    RESEND_WEBHOOK_SECRET: str = ""
+    EMAIL_FROM_ADDRESS: str = "outreach@company.com"
+    EMAIL_FROM_NAME: str = "Outreach Team"
     SMARTLEAD_API_KEY: str = ""
 
     # ── Scraping / Search ───────────────────────────────────────────────

@@ -18,40 +18,86 @@ logger = logging.getLogger(__name__)
     queue="outreach",
 )
 def send_message(self, message_id: str, **kwargs):
-    """Send an outreach message via the configured email provider.
-
-    Phase 2 will add: SendGrid / Resend / SmartLead integration.
-    For now, marks the message as 'sent' in the database.
-    """
+    """Send an outreach message via the configured email provider."""
     import asyncio
     from sqlalchemy import select
     from app.models.message import OutreachMessage
+    from app.services.email.email_service import EmailService
 
     async def _send():
         async with async_session() as db:
-            result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == uuid.UUID(message_id)))
-            message = result.scalar_one_or_none()
-            if not message:
-                logger.error("Message %s not found", message_id)
-                return {"message_id": message_id, "status": "not_found"}
-
-            if message.status not in ("approved", "scheduled"):
-                logger.warning("Message %s not in sendable state: %s", message_id, message.status)
-                return {"message_id": message_id, "status": "skipped", "reason": f"status={message.status}"}
-
-            # TODO: Integrate with actual email sending provider
-            # For now, mark as sent
-            message.status = "sent"
-            message.sent_at = datetime.utcnow()
-            db.add(message)
-            await db.commit()
-
-            logger.info("Message %s marked as sent (provider integration pending)", message_id)
-            return {"message_id": message_id, "status": "sent"}
+            svc = EmailService(db)
+            result = await svc.send_message(uuid.UUID(message_id))
+            return {"message_id": message_id, "status": result.status}
 
     loop = asyncio.new_event_loop()
     try:
         return loop.run_until_complete(_send())
+    finally:
+        loop.close()
+
+
+@celery_app.task(
+    bind=True,
+    base=BaseTask,
+    name="app.workers.outreach_tasks.send_pending_emails",
+    queue="outreach",
+)
+def send_pending_emails(**kwargs):
+    """Send all approved messages that are due."""
+    import asyncio
+    from app.services.email.email_service import EmailService
+
+    async def _send():
+        async with async_session() as db:
+            service = EmailService(db)
+            result = await service.send_pending_messages(limit=50)
+            logger.info("Sent batch: %s", result)
+            return result
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(_send())
+    finally:
+        loop.close()
+
+
+@celery_app.task(
+    bind=True,
+    base=BaseTask,
+    name="app.workers.outreach_tasks.advance_campaign_enrollments",
+    queue="outreach",
+)
+def advance_campaign_enrollments(**kwargs):
+    """Advance campaign enrollments whose next_step_at has passed."""
+    import asyncio
+    from datetime import timezone
+    from app.services.campaign_service import CampaignService
+
+    async def _advance():
+        async with async_session() as db:
+            service = CampaignService(db)
+            # Get all teams with active campaigns — use a zero UUID for now
+            # In production, iterate over all active team IDs
+            from sqlalchemy import select as sa_select
+            from app.models.campaign import Campaign
+
+            result = await db.execute(sa_select(Campaign).where(Campaign.status == "active"))
+            campaigns = list(result.scalars().all())
+
+            results = []
+            for campaign in campaigns:
+                enrollments = await service.get_enrollments_due_now(campaign.id)
+                for enrollment in enrollments:
+                    res = await service.advance_enrollment(enrollment.id)
+                    results.append({"enrollment_id": str(enrollment.id), "advanced": bool(res)})
+
+            logger.info("Advanced %d enrollments", len(results))
+            return results
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(_advance())
     finally:
         loop.close()
 

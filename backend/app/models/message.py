@@ -27,6 +27,9 @@ class OutreachMessage(SQLModel, table=True):
     delivered_at: Optional[datetime] = Field(default=None)
     opened_at: Optional[datetime] = Field(default=None)
     clicked_at: Optional[datetime] = Field(default=None)
+    resend_id: Optional[str] = Field(default=None, index=True, description="Resend message ID for tracking")
+    error_message: Optional[str] = Field(default=None, description="Error message if send failed")
+    scheduled_at: Optional[datetime] = Field(default=None, description="When to send the message")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     __table_args__ = (
