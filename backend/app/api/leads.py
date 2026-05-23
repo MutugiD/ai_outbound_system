@@ -21,6 +21,9 @@ from app.schemas.lead import (
     LeadResponse,
     LeadListResponse,
 )
+from app.schemas.pipeline import PipelineTransitionRequest, PipelineTransitionResponse, PipelineTransitionDetailResponse
+from app.models.pipeline import PipelineTransition
+from app.models.note import LeadNote
 from app.services.lead_service import LeadService
 from app.services.scraping.csv_adapter import CSVAdapter
 from app.services.scraping.reddit_adapter import RedditAdapter
@@ -160,6 +163,71 @@ async def delete_lead(
 ):
     svc = LeadService(db)
     await svc.delete_lead(lead_id, team_id=current_user.team_id, user_id=current_user.id)
+
+
+# ── Pipeline transition ─────────────────────────────────────────────────
+
+
+@router.post("/{lead_id}/transition", response_model=PipelineTransitionDetailResponse)
+async def transition_lead(
+    lead_id: uuid.UUID,
+    body: PipelineTransitionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(_get_current_user),
+):
+    """Transition a lead's pipeline stage, creating a PipelineTransition record and optional note."""
+    from datetime import datetime
+
+    svc = LeadService(db)
+    lead = await svc.get_lead(lead_id, team_id=current_user.team_id)
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    from_stage = lead.pipeline_stage
+
+    # Create the transition record
+    transition = PipelineTransition(
+        lead_id=lead_id,
+        from_stage=from_stage,
+        to_stage=body.to_stage,
+        reason=body.reason,
+        transitioned_by=current_user.id,
+    )
+    db.add(transition)
+
+    # Update the lead's pipeline stage
+    lead.pipeline_stage = body.to_stage
+    lead.updated_at = datetime.utcnow()
+    db.add(lead)
+
+    # Optionally create a note
+    note_id = None
+    if body.note_content:
+        note = LeadNote(
+            lead_id=lead_id,
+            user_id=current_user.id,
+            content=body.note_content,
+            note_type=body.note_type or "update",
+        )
+        db.add(note)
+        await db.flush()
+        note_id = note.id
+
+    await db.flush()
+    await db.refresh(transition)
+
+    # Log activity
+    await svc._log_activity(
+        team_id=current_user.team_id,
+        user_id=current_user.id,
+        lead_id=lead_id,
+        action="lead.pipeline_transition",
+        details={"from_stage": from_stage, "to_stage": body.to_stage, "reason": body.reason},
+    )
+
+    resp = PipelineTransitionDetailResponse.model_validate(transition, from_attributes=True)
+    resp.note_id = note_id
+    return resp
 
 
 # ═══════════════════════════════════════════════════════════════════════════
