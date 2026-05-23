@@ -1,4 +1,7 @@
 // Core domain types for the AI Outbound Operating System
+// These match the backend API response schemas
+
+// ── Enums / Status types ───────────────────────────────────────────────────
 
 export type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived';
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost' | 'unreachable';
@@ -6,20 +9,27 @@ export type AgentStatus = 'idle' | 'running' | 'paused' | 'error';
 export type ChannelType = 'email' | 'linkedin' | 'phone' | 'sms' | 'whatsapp';
 export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'opened' | 'replied' | 'bounced' | 'failed';
 
+// ── Campaign ───────────────────────────────────────────────────────────────
+
 export interface Campaign {
   id: string;
+  team_id: string;
   name: string;
-  status: CampaignStatus;
-  channel: ChannelType;
-  agent_id: string;
-  lead_list_ids: string[];
-  message_template_id: string;
-  daily_limit: number;
-  start_date: string;
-  end_date?: string;
-  stats: CampaignStats;
+  description: string | null;
+  status: string; // maps to CampaignStatus but backend returns string
+  goal: string | null;
+  tone: string;
+  approval_mode: string;
+  send_limits: Record<string, unknown>;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
+  // Frontend-only computed field, derived from stats endpoint
+  stats?: CampaignStats;
+  // Derived from send_limits or stats
+  daily_limit?: number;
+  start_date?: string;
+  end_date?: string | null;
 }
 
 export interface CampaignStats {
@@ -32,6 +42,8 @@ export interface CampaignStats {
   response_rate: number;
   conversion_rate: number;
 }
+
+// ── Lead ───────────────────────────────────────────────────────────────────
 
 export interface Lead {
   id: string;
@@ -53,12 +65,19 @@ export interface Lead {
   updated_at: string;
 }
 
+// Backend lead response — different shape from the frontend Lead type
+// See services/api.ts for the LeadResponse type
+
+// ── Lead Notes ─────────────────────────────────────────────────────────────
+
 export interface LeadNote {
   id: string;
   content: string;
   author: string;
   created_at: string;
 }
+
+// ── Agent ──────────────────────────────────────────────────────────────────
 
 export interface Agent {
   id: string;
@@ -95,6 +114,8 @@ export interface AgentConfig {
   timezone: string;
 }
 
+// ── Message ───────────────────────────────────────────────────────────────
+
 export interface Message {
   id: string;
   campaign_id: string;
@@ -120,6 +141,8 @@ export interface MessageTemplate {
   created_at: string;
 }
 
+// ── Lead List ──────────────────────────────────────────────────────────────
+
 export interface LeadList {
   id: string;
   name: string;
@@ -129,15 +152,26 @@ export interface LeadList {
   created_at: string;
 }
 
+// ── Dashboard ─────────────────────────────────────────────────────────────
+
 export interface DashboardMetrics {
-  total_campaigns: number;
-  active_campaigns: number;
   total_leads: number;
-  messages_sent_today: number;
-  responses_today: number;
-  meetings_today: number;
-  conversion_rate: number;
+  new_leads_today: number;
+  hot_leads: number;
+  messages_sent: number;
   reply_rate: number;
+  interested_replies: number;
+  booked_calls: number;
+  pipeline_value: number;
+  conversion_rate: number;
+  top_source: string | null;
+  top_campaign: string | null;
+  // Frontend-computed / legacy compatibility
+  total_campaigns?: number;
+  active_campaigns?: number;
+  messages_sent_today?: number;
+  responses_today?: number;
+  meetings_today?: number;
 }
 
 export interface TimeSeriesPoint {
@@ -153,6 +187,8 @@ export interface ActivityFeedItem {
   metadata?: Record<string, string>;
 }
 
+// ── User ───────────────────────────────────────────────────────────────────
+
 export interface User {
   id: string;
   email: string;
@@ -160,6 +196,8 @@ export interface User {
   role: 'admin' | 'manager' | 'user';
   avatar_url?: string;
 }
+
+// ── Config ─────────────────────────────────────────────────────────────────
 
 export interface ApiConfig {
   openai_key_set: boolean;
@@ -169,9 +207,22 @@ export interface ApiConfig {
   webhook_url?: string;
 }
 
+// ── Pipeline ───────────────────────────────────────────────────────────────
+
 export interface PipelineStage {
   id: string;
   name: string;
-  leads: Lead[];
-  value: number;
+  count: number;
+  leads?: Lead[];
+  value?: number;
+}
+
+// ── Paginated response (generic) ───────────────────────────────────────────
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
 }

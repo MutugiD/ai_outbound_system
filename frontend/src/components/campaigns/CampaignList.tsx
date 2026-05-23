@@ -26,22 +26,22 @@ export function CampaignCard({ campaign, onSelect }: CampaignCardProps) {
       </CardHeader>
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-navy-300">
-          <span className="capitalize">{campaign.channel}</span>
+          <span className="capitalize">{campaign.tone}</span>
           <span className="text-navy-600">•</span>
-          <span>{campaign.stats.total_leads} leads</span>
+          <span>{(campaign.stats?.total_leads ?? 1)} leads</span>
         </div>
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div className="text-center">
             <p className="text-navy-400">Contacted</p>
-            <p className="text-navy-100 font-medium">{campaign.stats.contacted}</p>
+            <p className="text-navy-100 font-medium">{campaign.stats?.contacted}</p>
           </div>
           <div className="text-center">
             <p className="text-navy-400">Responded</p>
-            <p className="text-navy-100 font-medium">{campaign.stats.responded}</p>
+            <p className="text-navy-100 font-medium">{campaign.stats?.responded ?? 0}</p>
           </div>
           <div className="text-center">
             <p className="text-navy-400">Meetings</p>
-            <p className="text-navy-100 font-medium">{campaign.stats.meetings_booked}</p>
+            <p className="text-navy-100 font-medium">{(campaign.stats?.meetings_booked ?? 0)}</p>
           </div>
         </div>
       </div>
@@ -179,17 +179,18 @@ export function CampaignDetail({ campaign, onBack, onEdit, onToggleStatus, onDel
   const { getStatusStyle } = useStatusStyles();
   const style = getStatusStyle(campaign.status);
 
-  const contactedPct = campaign.stats.total_leads > 0
-    ? ((campaign.stats.contacted / campaign.stats.total_leads) * 100).toFixed(0)
+  const s = campaign.stats;
+  const contactedPct = (s?.total_leads ?? 0) > 0
+    ? (((s?.contacted ?? 0) / (s?.total_leads ?? 1)) * 100).toFixed(0)
     : '0';
-  const respondedPct = campaign.stats.contacted > 0
-    ? ((campaign.stats.responded / campaign.stats.contacted) * 100).toFixed(0)
+  const respondedPct = (s?.contacted ?? 0) > 0
+    ? (((s?.responded ?? 0) / (s?.contacted ?? 1)) * 100).toFixed(0)
     : '0';
-  const qualifiedPct = campaign.stats.responded > 0
-    ? ((campaign.stats.qualified / campaign.stats.responded) * 100).toFixed(0)
+  const qualifiedPct = (s?.responded ?? 0) > 0
+    ? (((s?.qualified ?? 0) / (s?.responded ?? 1)) * 100).toFixed(0)
     : '0';
-  const meetingPct = campaign.stats.qualified > 0
-    ? ((campaign.stats.meetings_booked / campaign.stats.qualified) * 100).toFixed(0)
+  const meetingPct = (s?.qualified ?? 0) > 0
+    ? (((s?.meetings_booked ?? 0) / (s?.qualified ?? 1)) * 100).toFixed(0)
     : '0';
 
   return (
@@ -207,7 +208,7 @@ export function CampaignDetail({ campaign, onBack, onEdit, onToggleStatus, onDel
                 {campaign.status}
               </Badge>
             </div>
-            <p className="text-sm text-navy-400 mt-0.5 capitalize">{campaign.channel} campaign</p>
+            <p className="text-sm text-navy-400 mt-0.5 capitalize">{campaign.tone} campaign</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -223,29 +224,29 @@ export function CampaignDetail({ campaign, onBack, onEdit, onToggleStatus, onDel
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatItem
           label="Total Leads"
-          value={campaign.stats.total_leads}
-          subtext={`${campaign.stats.contacted} contacted`}
+          value={(campaign.stats?.total_leads ?? 1)}
+          subtext={`${campaign.stats?.contacted} contacted`}
           icon={<Users size={18} />}
           color="gold"
         />
         <StatItem
           label="Responded"
-          value={campaign.stats.responded}
+          value={campaign.stats?.responded ?? 0}
           subtext={`${respondedPct}% reply rate`}
           icon={<MessageSquare size={18} />}
           color="emerald"
         />
         <StatItem
           label="Meetings"
-          value={campaign.stats.meetings_booked}
-          subtext={`${campaign.stats.qualified} qualified`}
+          value={(campaign.stats?.meetings_booked ?? 0)}
+          subtext={`${campaign.stats?.qualified ?? 0} qualified`}
           icon={<CalendarCheck size={18} />}
           color="gold"
         />
         <StatItem
           label="Deals Closed"
-          value={campaign.stats.deals_closed}
-          subtext={`${(campaign.stats.conversion_rate * 100).toFixed(1)}% conversion`}
+          value={campaign.stats?.deals_closed ?? 0}
+          subtext={`${((campaign.stats?.conversion_rate ?? 0) * 100).toFixed(1)}% conversion`}
           icon={<Trophy size={18} />}
           color="emerald"
         />
@@ -264,38 +265,38 @@ export function CampaignDetail({ campaign, onBack, onEdit, onToggleStatus, onDel
         <div className="space-y-4">
           <FunnelStep
             label="Leads"
-            value={campaign.stats.total_leads}
-            max={campaign.stats.total_leads}
+            value={(campaign.stats?.total_leads ?? 1)}
+            max={(campaign.stats?.total_leads ?? 1)}
             color="gold"
           />
           <FunnelStep
             label="Contacted"
-            value={campaign.stats.contacted}
-            max={campaign.stats.total_leads}
+            value={campaign.stats?.contacted ?? 0}
+            max={(campaign.stats?.total_leads ?? 1)}
             color="gold"
           />
           <FunnelStep
             label="Responded"
-            value={campaign.stats.responded}
-            max={campaign.stats.total_leads}
+            value={campaign.stats?.responded ?? 0}
+            max={(campaign.stats?.total_leads ?? 1)}
             color="emerald"
           />
           <FunnelStep
             label="Qualified"
-            value={campaign.stats.qualified}
-            max={campaign.stats.total_leads}
+            value={campaign.stats?.qualified ?? 0}
+            max={(campaign.stats?.total_leads ?? 1)}
             color="emerald"
           />
           <FunnelStep
             label="Meetings"
-            value={campaign.stats.meetings_booked}
-            max={campaign.stats.total_leads}
+            value={(campaign.stats?.meetings_booked ?? 0)}
+            max={(campaign.stats?.total_leads ?? 1)}
             color="gold"
           />
           <FunnelStep
             label="Deals"
-            value={campaign.stats.deals_closed}
-            max={campaign.stats.total_leads}
+            value={campaign.stats?.deals_closed ?? 0}
+            max={(campaign.stats?.total_leads ?? 1)}
             color="emerald"
           />
         </div>
@@ -317,30 +318,30 @@ export function CampaignDetail({ campaign, onBack, onEdit, onToggleStatus, onDel
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-navy-300">Response Rate</span>
-                <span className="font-medium text-navy-50">{(campaign.stats.response_rate * 100).toFixed(0)}%</span>
+                <span className="font-medium text-navy-50">{((campaign.stats?.response_rate ?? 0) * 100).toFixed(0)}%</span>
               </div>
-              <ProgressBar value={campaign.stats.response_rate * 100} max={100} color="emerald" />
+              <ProgressBar value={(campaign.stats?.response_rate ?? 0) * 100} max={100} color="emerald" />
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-navy-300">Conversion Rate</span>
-                <span className="font-medium text-navy-50">{(campaign.stats.conversion_rate * 100).toFixed(1)}%</span>
+                <span className="font-medium text-navy-50">{((campaign.stats?.conversion_rate ?? 0) * 100).toFixed(1)}%</span>
               </div>
-              <ProgressBar value={campaign.stats.conversion_rate * 100} max={100} color="gold" />
+              <ProgressBar value={(campaign.stats?.conversion_rate ?? 0) * 100} max={100} color="gold" />
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-navy-300">Lead → Contact</span>
                 <span className="font-medium text-navy-50">{contactedPct}%</span>
               </div>
-              <ProgressBar value={campaign.stats.contacted} max={campaign.stats.total_leads} color="gold" />
+              <ProgressBar value={campaign.stats?.contacted ?? 0} max={campaign.stats?.total_leads ?? 1} color="gold" />
             </div>
             <div>
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-navy-300">Contact → Reply</span>
                 <span className="font-medium text-navy-50">{respondedPct}%</span>
               </div>
-              <ProgressBar value={campaign.stats.responded} max={campaign.stats.contacted} color="emerald" />
+              <ProgressBar value={campaign.stats?.responded ?? 0} max={campaign.stats?.contacted ?? 1} color="emerald" />
             </div>
           </div>
         </Card>
@@ -356,13 +357,10 @@ export function CampaignDetail({ campaign, onBack, onEdit, onToggleStatus, onDel
             </CardTitle>
           </CardHeader>
           <div className="space-y-3">
-            <DetailRow label="Agent ID" value={campaign.agent_id} />
-            <DetailRow label="Channel" value={campaign.channel.charAt(0).toUpperCase() + campaign.channel.slice(1)} />
-            <DetailRow label="Daily Limit" value={`${campaign.daily_limit} messages/day`} />
-            <DetailRow label="Start Date" value={new Date(campaign.start_date).toLocaleDateString()} />
-            {campaign.end_date && (
-              <DetailRow label="End Date" value={new Date(campaign.end_date).toLocaleDateString()} />
-            )}
+            <DetailRow label="Goal" value={campaign.goal || 'Generate leads'} />
+            <DetailRow label="Tone" value={campaign.tone.charAt(0).toUpperCase() + campaign.tone.slice(1)} />
+            <DetailRow label="Approval" value={campaign.approval_mode} />
+            <DetailRow label="Daily Limit" value={`${(campaign.send_limits as Record<string, unknown>)?.daily_limit ?? campaign.daily_limit ?? 'Unlimited'} messages`} />
             <DetailRow label="Created" value={new Date(campaign.created_at).toLocaleDateString()} />
             <DetailRow label="Last Updated" value={new Date(campaign.updated_at).toLocaleDateString()} />
           </div>

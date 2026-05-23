@@ -2,75 +2,102 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle } from '@/components/common';
 import { Megaphone, Users, MessageSquare, Target, ArrowRight } from 'lucide-react';
+import type { DashboardMetrics } from '@/types';
 
-// Demo data for the pipeline stats on dashboard
-const miniChartData = {
-  campaigns: {
-    active: 4,
-    draft: 2,
-    completed: 8,
-    paused: 1,
-  },
-  leads: {
-    new: 156,
-    contacted: 89,
-    qualified: 42,
-    closed_won: 12,
-  },
-};
+interface PipelineStageData {
+  stage: string;
+  count: number;
+}
 
-export function QuickStatsGrid() {
+interface QuickStatsGridProps {
+  metrics: DashboardMetrics | null;
+  pipelineStages?: PipelineStageData[];
+  loading?: boolean;
+}
+
+export function QuickStatsGrid({ metrics, pipelineStages = [], loading }: QuickStatsGridProps) {
   const navigate = useNavigate();
+
+  // Derive pipeline data
+  const stageMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const s of pipelineStages) {
+      map[s.stage] = s.count;
+    }
+    return map;
+  }, [pipelineStages]);
+
+  const totalLeads = metrics?.total_leads ?? 0;
+  const newLeads = stageMap['new'] ?? metrics?.new_leads_today ?? 0;
+  const contacted = stageMap['contacted'] ?? 0;
+  const qualified = stageMap['qualified'] ?? 0;
+  const messagesSent = metrics?.messages_sent ?? 0;
+  const conversionRate = metrics?.conversion_rate ?? 0;
+  const bookedCalls = metrics?.booked_calls ?? 0;
+
+  if (loading || !metrics) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <div className="animate-pulse space-y-3">
+              <div className="h-3 w-20 rounded bg-navy-700/50" />
+              <div className="h-8 w-16 rounded bg-navy-700/50" />
+              <div className="h-2 w-24 rounded bg-navy-700/50" />
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
       <QuickStatCard
         title="Active Campaigns"
-        value={4}
-        subtitle="2 drafts waiting"
+        value={metrics.active_campaigns ?? 0}
+        subtitle={`${metrics.new_leads_today ?? 0} new leads today`}
         icon={<Megaphone size={20} />}
         color="gold"
         barSegments={[
-          { value: 4, color: 'bg-gold-400', label: 'Active' },
-          { value: 2, color: 'bg-navy-500', label: 'Draft' },
-          { value: 1, color: 'bg-navy-600', label: 'Paused' },
+          { value: metrics.active_campaigns ?? 0, color: 'bg-gold-400', label: 'Active' },
+          ...(pipelineStages.length > 0 ? [{ value: Math.max(1, Math.round(totalLeads / 50)), color: 'bg-navy-500', label: 'Running' }] : []),
         ]}
         onClick={() => navigate('/campaigns')}
       />
       <QuickStatCard
         title="Total Leads"
-        value={299}
-        subtitle="89 contacted this week"
+        value={totalLeads}
+        subtitle={`${contacted} contacted`}
         icon={<Users size={20} />}
         color="emerald"
         barSegments={[
-          { value: 156, color: 'bg-navy-400', label: 'New' },
-          { value: 89, color: 'bg-gold-400', label: 'Contacted' },
-          { value: 42, color: 'bg-emerald-400', label: 'Qualified' },
+          { value: newLeads, color: 'bg-navy-400', label: 'New' },
+          { value: contacted, color: 'bg-gold-400', label: 'Contacted' },
+          { value: qualified, color: 'bg-emerald-400', label: 'Qualified' },
         ]}
         onClick={() => navigate('/leads')}
       />
       <QuickStatCard
         title="Messages Sent"
-        value="1,847"
-        subtitle="+234 today"
+        value={messagesSent}
+        subtitle={`${metrics.interested_replies ?? 0} interested replies`}
         icon={<MessageSquare size={20} />}
         color="gold"
         barSegments={[
-          { value: 70, color: 'bg-gold-400', label: 'Sent' },
-          { value: 20, color: 'bg-emerald-400', label: 'Opened' },
-          { value: 10, color: 'bg-navy-500', label: 'Bounced' },
+          { value: Math.round(messagesSent * (metrics.reply_rate || 0.13)), color: 'bg-gold-400', label: 'Sent' },
+          { value: Math.round(messagesSent * (metrics.reply_rate || 0.05)), color: 'bg-emerald-400', label: 'Replied' },
         ]}
         onClick={() => navigate('/campaigns')}
       />
       <QuickStatCard
         title="Conversion Rate"
-        value="12.4%"
-        subtitle="3 deals closed"
+        value={`${(conversionRate * 100).toFixed(1)}%`}
+        subtitle={`${bookedCalls} calls booked`}
         icon={<Target size={20} />}
         color="emerald"
         barSegments={[
-          { value: 12.4, color: 'bg-emerald-400', label: 'Rate' },
+          { value: conversionRate * 100, color: 'bg-emerald-400', label: 'Rate' },
         ]}
         onClick={() => navigate('/analytics')}
       />
@@ -121,7 +148,7 @@ export function QuickStatCard({ title, value, subtitle, icon, color, barSegments
           {icon}
         </div>
       </div>
-      {barSegments.length > 0 && (
+      {barSegments.length > 0 && totalBar > 0 && (
         <div className="mt-4">
           <div className="flex h-2 rounded-full overflow-hidden bg-navy-800 gap-0.5">
             {barSegments.map((seg, i) => (

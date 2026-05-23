@@ -1,52 +1,47 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardMetricsRow, QuickStatsGrid, ActivityFeed, MiniChart, demoChartData } from '@/components/dashboard';
-import { Card, CardHeader, CardTitle } from '@/components/common';
+import { DashboardMetricsRow, QuickStatsGrid, ActivityFeed, MiniChart } from '@/components/dashboard';
 import { useDashboardStore } from '@/stores';
 import { api } from '@/services';
 import type { DashboardMetrics, ActivityFeedItem } from '@/types';
 import { ArrowRight, BarChart3, Activity } from 'lucide-react';
 
-// Demo data for initial display
-const demoMetrics: DashboardMetrics = {
-  total_campaigns: 15,
-  active_campaigns: 4,
-  total_leads: 299,
-  messages_sent_today: 234,
-  responses_today: 31,
-  meetings_today: 3,
-  conversion_rate: 0.124,
-  reply_rate: 0.132,
-};
-
-const demoActivity: ActivityFeedItem[] = [
-  { id: '1', type: 'meeting_booked', description: 'Meeting booked with Sarah Kim at Acme Corp', timestamp: new Date().toISOString(), metadata: { agent: 'SDR Agent 1' } },
-  { id: '2', type: 'reply_received', description: 'Reply from John Martinez at Techflow - interested in demo', timestamp: new Date(Date.now() - 3600000).toISOString() },
-  { id: '3', type: 'message_sent', description: '50 personalized emails sent via Enterprise Outreach campaign', timestamp: new Date(Date.now() - 7200000).toISOString() },
-  { id: '4', type: 'deal_closed', description: 'Deal closed! $45K ARR with CloudScale Systems', timestamp: new Date(Date.now() - 14400000).toISOString() },
-  { id: '5', type: 'lead_added', description: '23 new leads imported from LinkedIn Sales Navigator', timestamp: new Date(Date.now() - 21600000).toISOString() },
-  { id: '6', type: 'campaign_started', description: 'Q2 SaaS Outreach campaign started', timestamp: new Date(Date.now() - 28800000).toISOString() },
-  { id: '7', type: 'reply_received', description: 'Reply from Lisa Wang at DataSync - requesting pricing', timestamp: new Date(Date.now() - 36000000).toISOString() },
-  { id: '8', type: 'meeting_booked', description: 'Meeting booked with David Chen at NextGen AI', timestamp: new Date(Date.now() - 43200000).toISOString() },
-];
+interface PipelineStageData {
+  stage: string;
+  count: number;
+}
 
 export default function DashboardPage() {
-  const { setMetrics, setActivityFeed, metrics } = useDashboardStore();
+  const { setMetrics, setActivityFeed, metrics, activityFeed } = useDashboardStore();
   const [loading, setLoading] = useState(true);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStageData[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [metricsData, activityData] = await Promise.all([
-          api.getDashboardMetrics(),
+        const [overviewData, activityData] = await Promise.all([
+          api.analytics.overview(),
           api.getActivityFeed(),
         ]);
-        setMetrics(metricsData);
-        setActivityFeed(activityData);
-      } catch {
-        setMetrics(demoMetrics);
-        setActivityFeed(demoActivity);
+
+        // Map backend overview to dashboard metrics
+        const dashboardMetrics: DashboardMetrics = {
+          ...overviewData,
+          total_campaigns: 0,
+          active_campaigns: 0,
+          messages_sent_today: overviewData.messages_sent,
+          responses_today: overviewData.interested_replies,
+          meetings_today: overviewData.booked_calls,
+        };
+        setMetrics(dashboardMetrics);
+        setActivityFeed(activityData as ActivityFeedItem[]);
+
+        // Fetch pipeline data
+        const pipelineData = await api.analytics.pipeline();
+        setPipelineStages(pipelineData.stages || []);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
       } finally {
         setLoading(false);
       }
@@ -93,43 +88,31 @@ export default function DashboardPage() {
             View leads <ArrowRight size={12} />
           </button>
         </div>
-        <QuickStatsGrid />
+        <QuickStatsGrid metrics={metrics} pipelineStages={pipelineStages} loading={loading} />
       </section>
 
-      {/* Charts section */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 size={18} className="text-gold-400" />
-          <h2 className="font-display text-lg font-semibold text-navy-50">Trends (7d)</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MiniChart
-            title="Messages Sent"
-            data={demoChartData.messages}
-            color="#fbbf24"
-            change={9.7}
-          />
-          <MiniChart
-            title="Replies Received"
-            data={demoChartData.replies}
-            color="#68d391"
-            change={12.9}
-          />
-          <MiniChart
-            title="Conversion Rate"
-            data={demoChartData.conversion}
-            color="#fbbf24"
-            change={1.4}
-            format="percent"
-          />
-          <MiniChart
-            title="Meetings Booked"
-            data={demoChartData.meetings}
-            color="#68d391"
-            change={50}
-          />
-        </div>
-      </section>
+      {/* Charts section — show pipeline stage counts as bar values */}
+      {pipelineStages.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 size={18} className="text-gold-400" />
+            <h2 className="font-display text-lg font-semibold text-navy-50">Pipeline Distribution</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {pipelineStages.slice(0, 4).map((stage, idx) => {
+              const colors = ['#fbbf24', '#68d391', '#fbbf24', '#68d391'];
+              return (
+                <MiniChart
+                  key={stage.stage}
+                  title={stage.stage.charAt(0).toUpperCase() + stage.stage.slice(1).replace('_', ' ')}
+                  data={[{ date: 'now', value: stage.count }]}
+                  color={colors[idx % colors.length]}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Activity Feed — full width */}
       <section>
@@ -137,7 +120,7 @@ export default function DashboardPage() {
           <Activity size={18} className="text-emerald-400" />
           <h2 className="font-display text-lg font-semibold text-navy-50">Recent Activity</h2>
         </div>
-        <ActivityFeed items={demoActivity} loading={loading} />
+        <ActivityFeed items={activityFeed} loading={loading} />
       </section>
     </div>
   );
