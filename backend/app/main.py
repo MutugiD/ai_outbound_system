@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db
 from app.api.router import api_router
+from app.routers.webhooks import router as webhooks_router
 
 
 @asynccontextmanager
@@ -33,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(webhooks_router)
 
 
 @app.get("/health", tags=["health"])
