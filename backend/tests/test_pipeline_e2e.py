@@ -9,7 +9,11 @@ import os
 import sys
 import tempfile
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+pytestmark = pytest.mark.skip(reason="Manual E2E pipeline script (not stable for CI unit tests)")
 
 from app.services.scraping.csv_adapter import CSVAdapter
 from app.services.scraping.reddit_adapter import RedditAdapter

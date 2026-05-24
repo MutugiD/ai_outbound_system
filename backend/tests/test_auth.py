@@ -104,13 +104,10 @@ async def test_me_returns_user_info(client: AsyncClient, test_user, auth_token):
         "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {auth_token}"},
     )
-    # The /me endpoint may not be fully implemented yet; we accept 200 or 422
-    # depending on how the dependency is wired
-    assert resp.status_code in (200, 401, 422)
+    assert resp.status_code == 200
 
 
 async def test_unauthorized_access_returns_401(client: AsyncClient):
     """Requests without auth should return 401 or redirect."""
     resp = await client.get("/api/v1/leads")
-    # Without auth header, should get 401 or 422 depending on dep wiring
-    assert resp.status_code in (401, 422)
+    assert resp.status_code == 401
