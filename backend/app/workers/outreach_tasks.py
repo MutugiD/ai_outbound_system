@@ -158,6 +158,41 @@ def process_follow_ups(self, team_id: str, **kwargs):
 @celery_app.task(
     bind=True,
     base=BaseTask,
+    name="app.workers.outreach_tasks.process_follow_ups_all_teams",
+    queue="outreach",
+)
+def process_follow_ups_all_teams(self, **kwargs):
+    """Process due follow-up tasks for all teams (beat-scheduled)."""
+    import asyncio
+    from sqlalchemy import select
+    from app.models.team import Team
+    from app.services.follow_up_service import FollowUpAutomation
+
+    async def _process():
+        async with async_session() as db:
+            team_ids = list((await db.execute(select(Team.id))).scalars().all())
+            automation = FollowUpAutomation(db)
+
+            processed_total = 0
+            processed_task_ids: list[str] = []
+            for team_id in team_ids:
+                processed = await automation.process_due_tasks(team_id=team_id)
+                processed_total += len(processed)
+                processed_task_ids.extend([str(t.id) for t in processed])
+
+            await db.commit()
+            return {"processed_count": processed_total, "task_ids": processed_task_ids}
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(_process())
+    finally:
+        loop.close()
+
+
+@celery_app.task(
+    bind=True,
+    base=BaseTask,
     name="app.workers.outreach_tasks.classify_reply",
     queue="outreach",
 )

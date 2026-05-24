@@ -13,7 +13,6 @@ from app.dependencies import get_current_user
 from app.models.lead import Lead
 from app.models.research import AIResearchReport
 from app.models.user import User
-from app.services.ai.research_agent import ResearchAgent
 
 router = APIRouter(prefix="/leads", tags=["research"])
 
@@ -48,6 +47,12 @@ class BulkResearchRequest(BaseModel):
 class BulkResearchResponse(BaseModel):
     triggered: int
     lead_ids: list[str] = []
+    task_ids: list[str] = []
+
+
+class ResearchQueuedResponse(BaseModel):
+    lead_id: str
+    task_id: str
 
 
 # ── Auth helper ─────────────────────────────────────────────────────────────
@@ -59,8 +64,8 @@ class BulkResearchResponse(BaseModel):
 
 @router.post(
     "/{lead_id}/research",
-    response_model=ResearchBriefResponse,
-    status_code=status.HTTP_201_CREATED,
+    response_model=ResearchQueuedResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def trigger_research(
     lead_id: uuid.UUID,
@@ -74,30 +79,10 @@ async def trigger_research(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    agent = ResearchAgent()
-    try:
-        report = await agent.generate_research(lead_id, db)
-    except ValueError as exc:
-        raise HTTPException(status_code=404, detail=str(exc))
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Research generation failed: {exc}")
+    from app.workers.ai_tasks import generate_research_brief as research_task
 
-    # Build response
-    return ResearchBriefResponse(
-        id=report.id,
-        lead_id=report.lead_id,
-        version=report.version,
-        company_summary=report.company_summary,
-        target_customer=report.target_customer,
-        likely_operational_pain=report.likely_operational_pain or [],
-        revenue_leakage_hypothesis=report.revenue_leakage_hypothesis or [],
-        competitor_observations=report.competitor_observations or [],
-        recommended_outreach_angle=report.recommended_outreach_angle,
-        confidence=float(report.confidence) if report.confidence is not None else None,
-        model_used=report.model_used,
-        sources_used=report.sources_used or [],
-        created_at=str(report.created_at),
-    )
+    async_result = research_task.delay(str(lead_id))
+    return ResearchQueuedResponse(lead_id=str(lead_id), task_id=async_result.id)
 
 
 # ── GET /leads/{lead_id}/research — get latest research ─────────────────────
@@ -181,17 +166,19 @@ async def bulk_research(
     result = await db.execute(stmt)
     leads = list(result.scalars().all())
 
+    from app.workers.ai_tasks import generate_research_brief as research_task
+
     triggered = 0
     lead_ids: list[str] = []
+    task_ids: list[str] = []
 
-    agent = ResearchAgent()
     for lead in leads:
         try:
-            await agent.generate_research(lead.id, db)
+            async_result = research_task.delay(str(lead.id))
             triggered += 1
             lead_ids.append(str(lead.id))
+            task_ids.append(async_result.id)
         except Exception:
-            # Skip failed research but continue with others
             continue
 
-    return BulkResearchResponse(triggered=triggered, lead_ids=lead_ids)
+    return BulkResearchResponse(triggered=triggered, lead_ids=lead_ids, task_ids=task_ids)

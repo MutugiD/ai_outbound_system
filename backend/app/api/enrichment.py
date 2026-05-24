@@ -10,16 +10,8 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.lead import Lead
 from app.models.company import Company
-from app.models.signal import BuyingSignal
-from app.models.score import LeadScore
-from app.models.audit import WebsiteAudit
 from app.models.user import User
 from app.rate_limit import rate_limit
-from app.services.enrichment.enrichment_service import EnrichmentService
-from app.services.ai.signal_detector import SignalDetector
-from app.services.ai.scoring_service import ScoringService
-from app.services.ai.audit_service import AuditService
-from app.services.ai.llm_service import LLMService
 
 router = APIRouter(prefix="", tags=["enrichment"])
 
@@ -47,12 +39,10 @@ async def enrich_lead(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    service = EnrichmentService(db)
-    try:
-        result = await service.enrich_lead(lead_id)
-        return {"message": "Lead enrichment completed", "result": result}
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Enrichment failed: {exc}")
+    from app.workers.enrichment_tasks import enrich_lead as enrich_task
+
+    async_result = enrich_task.delay(str(lead_id))
+    return {"message": "Lead enrichment queued", "lead_id": str(lead_id), "task_id": async_result.id}
 
 
 # ── Detect signals ────────────────────────────────────────────────────────────
@@ -84,19 +74,10 @@ async def detect_signals(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    llm = LLMService() if method in ("llm", "both") else None
-    detector = SignalDetector(llm_service=llm)
-    try:
-        signals = await detector.detect_signals(lead_id, db, method=method)
-        return {
-            "message": "Signal detection completed",
-            "lead_id": str(lead_id),
-            "signals_detected": len(signals),
-            "categories": [s.category for s in signals],
-            "signal_ids": [str(s.id) for s in signals],
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Signal detection failed: {exc}")
+    from app.workers.ai_tasks import detect_buying_signals as detect_task
+
+    async_result = detect_task.delay(str(lead_id), method=method, model=model)
+    return {"message": "Signal detection queued", "lead_id": str(lead_id), "task_id": async_result.id}
 
 
 # ── Calculate score ───────────────────────────────────────────────────────────
@@ -122,28 +103,10 @@ async def score_lead(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
 
-    service = ScoringService(db)
-    try:
-        score = await service.calculate_score(lead_id)
-        return {
-            "message": "Lead scored successfully",
-            "lead_id": str(lead_id),
-            "total_score": score.total_score,
-            "score_band": score.score_band,
-            "dimensions": {
-                "buying_intent": score.buying_intent_score,
-                "urgency": score.urgency_score,
-                "operational_pain": score.operational_pain_score,
-                "scaling_pressure": score.scaling_pressure_score,
-                "budget_probability": score.budget_probability_score,
-                "website_weakness": score.website_weakness_score,
-                "contactability": score.contactability_score,
-                "recency": score.recency_score,
-            },
-            "explanation": score.explanation,
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Scoring failed: {exc}")
+    from app.workers.ai_tasks import calculate_lead_score as score_task
+
+    async_result = score_task.delay(str(lead_id))
+    return {"message": "Lead scoring queued", "lead_id": str(lead_id), "task_id": async_result.id}
 
 
 # ── Audit website ──────────────────────────────────────────────────────────────
@@ -179,29 +142,7 @@ async def audit_website(
     if not audit_domain:
         raise HTTPException(status_code=400, detail="No domain available for this company")
 
-    service = AuditService(db)
-    try:
-        audit = await service.audit_website(company_id, audit_domain)
-        return {
-            "message": "Website audit completed",
-            "company_id": str(company_id),
-            "domain": audit_domain,
-            "website_score": audit.website_score,
-            "page_speed_score": audit.page_speed_score,
-            "mobile_score": audit.mobile_score,
-            "has_chatbot": audit.has_chatbot,
-            "has_booking": audit.has_booking,
-            "has_contact_form": audit.has_contact_form,
-            "has_email_capture": audit.has_email_capture,
-            "has_crm_form": audit.has_crm_form,
-            "has_tracking_scripts": audit.has_tracking_scripts,
-            "has_support_widget": audit.has_support_widget,
-            "broken_forms": audit.broken_forms,
-            "weak_cta": audit.weak_cta,
-            "sales_angle": audit.sales_angle,
-            "technical_findings": audit.technical_findings,
-            "conversion_findings": audit.conversion_findings,
-            "automation_findings": audit.automation_findings,
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Website audit failed: {exc}")
+    from app.workers.ai_tasks import audit_company_website as audit_task
+
+    async_result = audit_task.delay(str(company_id), domain=audit_domain)
+    return {"message": "Website audit queued", "company_id": str(company_id), "domain": audit_domain, "task_id": async_result.id}
