@@ -55,6 +55,28 @@ Date: 2026-05-24
   - Delivery lifecycle events (`email.delivered/opened/clicked/bounced/failed/...`) → updates `OutreachMessage`.
   - Inbound replies → creates `Reply`, enqueues classification + follow-up automation via Celery.
 
+### Marketing + Outreach (multi-client) — Brand Brain → Signals → Drafts → Analytics (PARTIAL)
+This repo supports onboarding many clients/teams while keeping scraping predictable and safe:
+- **Source of truth**: per-team config and hard caps live in `Team.settings["marketing"]`.
+- **Hard quotas (server-enforced)**:
+  - `daily_audience_signals_max`
+  - `daily_scan_requests_max`
+  - `per_scan_max_results`
+- **Async audience discovery**: scans are enqueued via HTTP and executed by Celery on a dedicated `marketing` queue. This avoids synchronous scraping that won't scale across many clients with different N/day requirements.
+
+Implemented APIs (team-scoped, auth required):
+- `PUT /api/v1/marketing/settings` — merge into `Team.settings["marketing"]`
+- `POST /api/v1/marketing/brand-brain/derive` — website → draft Brand Brain (stored by default)
+- `POST /api/v1/marketing/audience-scans` — enqueue scan (returns `job_id` + `task_id`)
+- `GET /api/v1/marketing/audience-scans/{job_id}` — job status + counters
+- `GET /api/v1/marketing/audience-signals` — signals list (pagination + filters)
+- `POST /api/v1/marketing/post-drafts/generate` — drafts from Brand Brain + optional signal context
+- `GET /api/v1/marketing/analytics/overview` — per-day usage counters
+
+Notes:
+- Current sources: **Reddit + Hacker News** (X/LinkedIn are placeholders for later).
+- Draft generation uses a deterministic template fallback (works without LLM keys).
+
 ### PENDING / known gaps
 - Webhook event idempotency for delivery events (inbound is deduped by provider inbound ID where available).
 - Production hardening still recommended: strict `CORS_ORIGINS`, TLS, structured logging + secret redaction, and running `alembic upgrade head` before app start.
@@ -95,4 +117,3 @@ This repo deploys **immutable image tags** (SemVer tags like `v0.1.1`).
 - Backend exposes `GET /version` returning:
   - `app_version` (deploy tag when built by workflow)
   - `git_sha`
-
