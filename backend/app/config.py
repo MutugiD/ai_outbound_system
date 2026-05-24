@@ -80,6 +80,7 @@ class Settings(BaseSettings):
 
     # ── Encryption ──────────────────────────────────────────────────────
     ENCRYPTION_KEY: str = "change-me-32-bytes-encryption-key!"
+    ENCRYPTION_KEY_ID: str = "v1"
 
     model_config = {
         "env_file": ".env",

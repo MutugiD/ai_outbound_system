@@ -92,8 +92,7 @@ async def list_api_keys(
 
     items = []
     for k in keys:
-        # Mask the key hash to show last 4 chars
-        last4 = k.key_hash[-4:] if k.key_hash and len(k.key_hash) >= 4 else "****"
+        last4 = k.last4 if getattr(k, "last4", None) else "****"
         items.append(
             APIKeyResponse(
                 id=k.id,
@@ -124,10 +123,10 @@ async def create_api_key(
         team_id=current_user.team_id,
         user_id=current_user.id,
         provider=body.provider,
-        key_encrypted=body.key_encrypted,
+        key_plaintext=body.key,
         name=body.name,
     )
-    last4 = key.key_hash[-4:] if key.key_hash and len(key.key_hash) >= 4 else "****"
+    last4 = key.last4 if getattr(key, "last4", None) else "****"
     return APIKeyResponse(
         id=key.id,
         team_id=key.team_id,
