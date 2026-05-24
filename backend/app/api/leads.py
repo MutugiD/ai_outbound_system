@@ -9,7 +9,7 @@ from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import PaginationParams, get_current_user_from_token, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.lead import Lead
 from app.models.company import Company
 from app.models.contact import Contact
@@ -41,12 +41,6 @@ _website_adapter = WebsiteAdapter()
 _normalizer = LeadNormalizer()
 
 
-async def _get_current_user(authorization: str = Query(..., alias="Authorization"), db: AsyncSession = Depends(get_db)):
-    """Extract token from header and resolve user."""
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
 # ── List leads ────────────────────────────────────────────────────────────
 
 
@@ -65,7 +59,7 @@ async def list_leads(
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     svc = LeadService(db)
     filters = {}
@@ -109,7 +103,7 @@ async def list_leads(
 async def create_lead(
     body: LeadCreate,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     svc = LeadService(db)
     lead = await svc.create_lead(team_id=current_user.team_id, user_id=current_user.id, data=body)
@@ -123,7 +117,7 @@ async def create_lead(
 async def get_lead(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     svc = LeadService(db)
     lead = await svc.get_lead(lead_id, team_id=current_user.team_id)
@@ -140,7 +134,7 @@ async def update_lead(
     lead_id: uuid.UUID,
     body: LeadUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     svc = LeadService(db)
     lead = await svc.update_lead(lead_id, team_id=current_user.team_id, user_id=current_user.id, data=body)
@@ -156,7 +150,7 @@ async def update_lead(
 async def delete_lead(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     svc = LeadService(db)
     await svc.delete_lead(lead_id, team_id=current_user.team_id, user_id=current_user.id)
@@ -249,7 +243,7 @@ async def _ingest_leads(
 async def import_csv(
     file: UploadFile = File(..., description="CSV file to import"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """Upload a CSV file and import leads from it."""
     if not file.filename.endswith((".csv", ".txt")):
@@ -274,7 +268,7 @@ async def scrape_reddit(
     limit: int = Query(25, ge=1, le=100, description="Max results per subreddit"),
     timeframe: str = Query("week", description="Time window: hour, day, week, month, year, all"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """Search Reddit for buying-signal posts and import as leads."""
     query = {}
@@ -307,7 +301,7 @@ async def scrape_linkedin(
     remote: bool = Query(True, description="Filter for remote jobs"),
     limit: int = Query(50, ge=1, le=200, description="Max results"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """Scrape LinkedIn public job search (guest mode, no login) and import as leads."""
     query = {
@@ -338,7 +332,7 @@ async def scrape_linkedin(
 async def scrape_website(
     domain: str = Query(..., description="Domain to crawl (e.g. acme.com)"),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """Crawl a company website for contact/industry info and import as leads."""
     query = {"domain": domain}

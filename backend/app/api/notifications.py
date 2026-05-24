@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import PaginationParams, get_current_user_from_token, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.user import User
 from app.schemas.notification import (
     NotificationResponse,
@@ -20,15 +20,6 @@ from app.services.notification_service import NotificationService
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Extract token from query param and resolve user."""
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
 # ── List notifications ─────────────────────────────────────────────────────
 
 
@@ -38,7 +29,7 @@ async def list_notifications(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List notifications for the current user (paginated, optional unread filter)."""
     svc = NotificationService(db)
@@ -64,7 +55,7 @@ async def list_notifications(
 async def mark_notification_read(
     notification_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Mark a single notification as read."""
     svc = NotificationService(db)
@@ -87,7 +78,7 @@ async def mark_notification_read(
 @router.post("/mark-all-read", response_model=MarkAllReadResponse)
 async def mark_all_read(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Mark all unread notifications as read for the current user."""
     svc = NotificationService(db)
@@ -101,7 +92,7 @@ async def mark_all_read(
 @router.get("/unread-count", response_model=UnreadCountResponse)
 async def get_unread_count(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get the count of unread notifications for the current user."""
     svc = NotificationService(db)

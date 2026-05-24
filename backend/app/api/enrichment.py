@@ -7,12 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user_from_token
+from app.dependencies import get_current_user
 from app.models.lead import Lead
 from app.models.company import Company
 from app.models.signal import BuyingSignal
 from app.models.score import LeadScore
 from app.models.audit import WebsiteAudit
+from app.models.user import User
 from app.services.enrichment.enrichment_service import EnrichmentService
 from app.services.ai.signal_detector import SignalDetector
 from app.services.ai.scoring_service import ScoringService
@@ -22,19 +23,6 @@ from app.services.ai.llm_service import LLMService
 router = APIRouter(prefix="", tags=["enrichment"])
 
 
-async def _get_current_user(authorization: str = Depends(lambda: None), db: AsyncSession = Depends(get_db)):
-    """Extract token and resolve user — placeholder until auth middleware is wired."""
-    # In production, this would extract the JWT from the Authorization header
-    # and validate it.  For now, we allow direct access for development.
-    from app.models.user import User
-
-    result = await db.execute(select(User).limit(1))
-    user = result.scalar_one_or_none()
-    if user:
-        return user
-    raise HTTPException(status_code=401, detail="Authentication required")
-
-
 # ── Enrich lead ───────────────────────────────────────────────────────────────
 
 
@@ -42,13 +30,14 @@ async def _get_current_user(authorization: str = Depends(lambda: None), db: Asyn
 async def enrich_lead(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Trigger the full enrichment pipeline for a lead.
 
     Runs: contact enrichment, company enrichment, tech stack detection, email verification.
     """
     # Verify lead exists
-    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id))
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -70,6 +59,7 @@ async def detect_signals(
     method: str = "both",
     model: str | None = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Trigger signal detection for a lead.
 
@@ -80,7 +70,7 @@ async def detect_signals(
     model : str | None
         LLM model to use (default: gpt-4o-mini).
     """
-    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id))
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -107,13 +97,14 @@ async def detect_signals(
 async def score_lead(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Trigger lead scoring for a lead.
 
     Calculates a multi-dimensional score based on signals, enrichment data,
     website audit, and contact info.
     """
-    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id))
     lead = result.scalar_one_or_none()
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
@@ -150,6 +141,7 @@ async def audit_website(
     company_id: uuid.UUID,
     domain: str | None = None,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Trigger a website audit for a company.
 
@@ -160,7 +152,7 @@ async def audit_website(
     domain : str | None
         Override domain (uses company.domain if not provided).
     """
-    result = await db.execute(select(Company).where(Company.id == company_id))
+    result = await db.execute(select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id))
     company = result.scalar_one_or_none()
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")

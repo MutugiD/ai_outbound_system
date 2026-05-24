@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import PaginationParams, get_current_user_from_token, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.user import User
 from app.models.message import OutreachMessage
 from app.models.reply import Reply, ReplyClassification
@@ -38,14 +38,6 @@ from app.services.follow_up_service import FollowUpAutomation
 router = APIRouter(prefix="/outreach", tags=["outreach"])
 
 
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # MESSAGE GENERATION & MANAGEMENT
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -55,7 +47,7 @@ async def _get_current_user(
 async def generate_messages(
     body: GenerateMessagesRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Generate personalized outreach messages for a lead using the Personalization Engine."""
     engine = PersonalizationEngine()
@@ -85,7 +77,7 @@ async def generate_messages(
 async def generate_for_campaign_step(
     enrollment_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Generate personalized messages for a lead in a campaign enrollment, using the current step's context."""
     # Get enrollment
@@ -132,7 +124,7 @@ async def list_messages(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List outreach messages with optional filters."""
     query = select(OutreachMessage)
@@ -167,7 +159,7 @@ async def list_messages(
 async def get_message(
     message_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific outreach message."""
     result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
@@ -182,7 +174,7 @@ async def approve_message(
     message_id: uuid.UUID,
     body: MessageApprovalRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Approve or reject a draft outreach message."""
     result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
@@ -215,7 +207,7 @@ async def approve_message(
 async def create_reply(
     body: ReplyCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Ingest a new reply from a prospect."""
     reply = Reply(
@@ -239,7 +231,7 @@ async def list_replies(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List replies with optional filters."""
     query = select(Reply)
@@ -268,7 +260,7 @@ async def list_replies(
 async def classify_reply(
     body: ClassifyReplyRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Classify a persisted reply using the Reply Classifier."""
     classifier = ReplyClassifier()
@@ -290,7 +282,7 @@ async def classify_reply(
 async def classify_text(
     body: ClassifyTextRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Classify raw reply text without persisting (preview)."""
     classifier = ReplyClassifier()
@@ -318,7 +310,7 @@ async def classify_text(
 async def get_reply(
     reply_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific reply."""
     result = await db.execute(select(Reply).where(Reply.id == reply_id))
@@ -332,7 +324,7 @@ async def get_reply(
 async def get_reply_classifications(
     reply_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get classification(s) for a reply."""
     result = await db.execute(select(ReplyClassification).where(ReplyClassification.reply_id == reply_id))
@@ -351,7 +343,7 @@ async def get_reply_classifications(
 async def process_classification(
     body: ProcessClassificationRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Create follow-up tasks from a reply classification."""
     automation = FollowUpAutomation(db)
@@ -366,7 +358,7 @@ async def process_classification(
 @router.post("/follow-ups/process-due", response_model=list[FollowUpTaskResponse])
 async def process_due_tasks(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Process all follow-up tasks that are due right now."""
     automation = FollowUpAutomation(db)
@@ -381,7 +373,7 @@ async def list_follow_up_tasks(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List follow-up tasks with optional filters."""
     automation = FollowUpAutomation(db)
@@ -404,7 +396,7 @@ async def reschedule_task(
     task_id: uuid.UUID,
     body: RescheduleTaskRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Reschedule a pending follow-up task."""
     automation = FollowUpAutomation(db)
@@ -418,7 +410,7 @@ async def reschedule_task(
 async def cancel_task(
     task_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Cancel a pending follow-up task."""
     automation = FollowUpAutomation(db)

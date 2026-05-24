@@ -8,7 +8,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import PaginationParams, get_current_user_from_token, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.company import (
@@ -21,11 +21,6 @@ from app.schemas.company import (
 router = APIRouter(prefix="/companies", tags=["companies"])
 
 
-async def _get_current_user(authorization: str = Query(..., alias="Authorization"), db: AsyncSession = Depends(get_db)):
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
 # ── List companies ────────────────────────────────────────────────────────
 
 
@@ -36,7 +31,7 @@ async def list_companies(
     search: Optional[str] = Query(None),
     industry: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     query = select(Company).where(Company.team_id == current_user.team_id)
 
@@ -68,7 +63,7 @@ async def list_companies(
 async def get_company(
     company_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     company = (
         await db.execute(select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id))
@@ -86,7 +81,7 @@ async def update_company(
     company_id: uuid.UUID,
     body: CompanyUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     company = (
         await db.execute(select(Company).where(Company.id == company_id, Company.team_id == current_user.team_id))

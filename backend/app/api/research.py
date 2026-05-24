@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user_from_token
+from app.dependencies import get_current_user
 from app.models.lead import Lead
 from app.models.research import AIResearchReport
 from app.models.user import User
@@ -53,14 +53,7 @@ class BulkResearchResponse(BaseModel):
 # ── Auth helper ─────────────────────────────────────────────────────────────
 
 
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
+# NOTE: auth is enforced via app.dependencies.get_current_user (Authorization header).
 # ── POST /leads/{lead_id}/research — trigger research ──────────────────────
 
 
@@ -72,7 +65,7 @@ async def _get_current_user(
 async def trigger_research(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Generate a research brief for a lead by loading data from the DB and calling the LLM."""
     # Verify lead belongs to the user's team
@@ -117,7 +110,7 @@ async def trigger_research(
 async def get_research(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get the latest research report for a lead."""
     # Verify lead belongs to the user's team
@@ -165,7 +158,7 @@ async def get_research(
 async def bulk_research(
     body: BulkResearchRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Trigger research for leads matching a status or score_band filter.
 
