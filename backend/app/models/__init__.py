@@ -25,6 +25,7 @@ from app.models.suppression import SuppressionList
 from app.models.integration import Integration
 from app.models.api_key import APIKey
 from app.models.notification import Notification
+from app.models.marketing import AudienceScanJob, AudienceSignal, MarketingUsageDaily, SocialPostDraft
 
 __all__ = [
     "Team",
@@ -55,4 +56,8 @@ __all__ = [
     "Integration",
     "APIKey",
     "Notification",
+    "AudienceScanJob",
+    "AudienceSignal",
+    "MarketingUsageDaily",
+    "SocialPostDraft",
 ]
