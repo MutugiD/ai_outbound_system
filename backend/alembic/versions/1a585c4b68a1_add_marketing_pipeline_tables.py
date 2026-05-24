@@ -128,4 +128,3 @@ def downgrade() -> None:
     op.drop_index("idx_audience_scan_jobs_created_at", table_name="audience_scan_jobs")
     op.drop_index("idx_audience_scan_jobs_team_status", table_name="audience_scan_jobs")
     op.drop_table("audience_scan_jobs")
-

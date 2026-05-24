@@ -117,4 +117,3 @@ async def derive_brand_brain(website_url: str) -> dict[str, Any]:
         "voice_rules": voice_rules,
         "keywords": keywords,
     }
-

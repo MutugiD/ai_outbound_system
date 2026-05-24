@@ -20,3 +20,4 @@ htmlcov/
 *.db
 *.sqlite3
 data/
+celerybeat-schedule

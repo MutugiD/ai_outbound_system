@@ -92,9 +92,7 @@ class MarketingUsageDaily(SQLModel, table=True):
 
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("uq_marketing_usage_daily_team_day", "team_id", "day", unique=True),
-    )
+    __table_args__ = (Index("uq_marketing_usage_daily_team_day", "team_id", "day", unique=True),)
 
 
 class SocialPostDraft(SQLModel, table=True):
@@ -114,6 +112,4 @@ class SocialPostDraft(SQLModel, table=True):
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_social_post_drafts_team_created_at", "team_id", "created_at"),
-    )
+    __table_args__ = (Index("idx_social_post_drafts_team_created_at", "team_id", "created_at"),)

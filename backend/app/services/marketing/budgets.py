@@ -110,4 +110,3 @@ def remaining_signals_budget(team: Team, usage: MarketingUsageDaily) -> int:
         return 0
     remaining = max_signals - int(usage.signals_saved or 0)
     return max(0, remaining)
-

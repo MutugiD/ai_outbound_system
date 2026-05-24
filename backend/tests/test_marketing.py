@@ -75,7 +75,12 @@ async def test_audience_scan_job_team_scoped(client, db_session, test_team, test
     import time
 
     other_token = jwt.encode(
-        {"sub": str(other_user.id), "team_id": str(other_user.team_id), "exp": int(time.time()) + 3600, "type": "access"},
+        {
+            "sub": str(other_user.id),
+            "team_id": str(other_user.team_id),
+            "exp": int(time.time()) + 3600,
+            "type": "access",
+        },
         settings.SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )

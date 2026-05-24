@@ -138,4 +138,3 @@ async def scan_hacker_news(
                 )
 
     return signals
-
