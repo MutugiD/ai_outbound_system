@@ -176,6 +176,7 @@ class CSVAdapter(BaseLeadSourceAdapter):
         # Path-traversal prevention: resolve the candidate and ensure it is
         # contained by one of the canonical allowed root directories.
         resolved = os.path.realpath(path)
+
         def _is_allowed_dir(safe_dir: str) -> bool:
             try:
                 return os.path.commonpath([resolved, safe_dir]) == safe_dir

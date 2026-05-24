@@ -95,4 +95,3 @@ def rate_limit(limit: int, window_seconds: int, scope: str):
         await _limiter.check(request, rule)
 
     return _dep
-

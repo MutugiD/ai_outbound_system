@@ -119,7 +119,9 @@ def send_message(self, message_id: str, **kwargs):
                 )
 
                 await db.commit()
-                logger.info("Message %s sent via Resend (provider_message_id=%s)", message_id, result.provider_message_id)
+                logger.info(
+                    "Message %s sent via Resend (provider_message_id=%s)", message_id, result.provider_message_id
+                )
                 return {
                     "message_id": message_id,
                     "status": "sent",

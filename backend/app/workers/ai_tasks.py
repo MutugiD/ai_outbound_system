@@ -96,7 +96,12 @@ def generate_research_brief(self, lead_id: str, **kwargs):
             agent = ResearchAgent()
             report = await agent.generate_research(uuid.UUID(lead_id), db)
             await db.commit()
-            return {"lead_id": lead_id, "report_id": str(report.id), "version": report.version, "model_used": report.model_used}
+            return {
+                "lead_id": lead_id,
+                "report_id": str(report.id),
+                "version": report.version,
+                "model_used": report.model_used,
+            }
 
     logger.info("Task generate_research_brief started — lead_id=%s", lead_id)
     result = _run_async(_run())
@@ -126,7 +131,12 @@ def audit_website(self, lead_id: str, **kwargs):
             svc = AuditService(db)
             audit = await svc.audit_website(company.id, company.domain)
             await db.commit()
-            return {"lead_id": lead_id, "company_id": str(company.id), "audit_id": str(audit.id), "website_score": audit.website_score}
+            return {
+                "lead_id": lead_id,
+                "company_id": str(company.id),
+                "audit_id": str(audit.id),
+                "website_score": audit.website_score,
+            }
 
     logger.info("Task audit_website started — lead_id=%s", lead_id)
     result = _run_async(_run())
@@ -145,7 +155,9 @@ def audit_company_website(self, company_id: str, domain: str | None = None, **kw
 
     async def _run():
         async with async_session() as db:
-            company = (await db.execute(select(Company).where(Company.id == uuid.UUID(company_id)))).scalar_one_or_none()
+            company = (
+                await db.execute(select(Company).where(Company.id == uuid.UUID(company_id)))
+            ).scalar_one_or_none()
             if not company:
                 return {"company_id": company_id, "status": "not_found"}
 

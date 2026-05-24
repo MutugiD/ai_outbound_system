@@ -65,4 +65,3 @@ def keyed_hash_secret(secret: str) -> str:
     key = settings.SECRET_KEY.encode("utf-8")
     msg = str(secret).encode("utf-8")
     return hmac.new(key, msg, hashlib.sha256).hexdigest()
-

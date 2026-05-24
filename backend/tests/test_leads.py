@@ -179,4 +179,3 @@ async def test_filter_leads_by_score_band(client: AsyncClient, test_team, db_ses
     # At least one hot lead should be present
     hot_items = [i for i in items if i.get("score_band") == "hot"]
     assert len(hot_items) >= 1
-

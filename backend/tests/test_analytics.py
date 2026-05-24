@@ -610,4 +610,3 @@ async def test_analytics_with_empty_data(client, db_session):
     )
     assert resp.status_code == 200
     assert resp.json()["signals"] == []
-

@@ -17,4 +17,3 @@ async def get_task_status(task_id: str, current_user=Depends(get_current_user)):
     if result.ready():
         payload["result"] = result.result
     return payload
-

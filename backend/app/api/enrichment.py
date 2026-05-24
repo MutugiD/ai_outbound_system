@@ -145,4 +145,9 @@ async def audit_website(
     from app.workers.ai_tasks import audit_company_website as audit_task
 
     async_result = audit_task.delay(str(company_id), domain=audit_domain)
-    return {"message": "Website audit queued", "company_id": str(company_id), "domain": audit_domain, "task_id": async_result.id}
+    return {
+        "message": "Website audit queued",
+        "company_id": str(company_id),
+        "domain": audit_domain,
+        "task_id": async_result.id,
+    }
