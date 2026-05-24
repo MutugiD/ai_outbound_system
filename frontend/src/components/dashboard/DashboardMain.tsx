@@ -29,22 +29,22 @@ export function DashboardMetricsRow({ metrics, loading }: DashboardMetricsProps)
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <MetricCard
-        label="Active Campaigns"
-        value={metrics.active_campaigns}
-        icon={<Megaphone size={20} />}
-        accent="gold"
-      />
-      <MetricCard
-        label="Messages Today"
-        value={metrics.messages_sent_today}
-        change={metrics.reply_rate}
-        changeLabel="reply rate"
-        icon={<MessageSquare size={20} />}
+        label="Total Leads"
+        value={metrics.total_leads}
+        icon={<Users size={20} />}
         accent="emerald"
       />
       <MetricCard
-        label="Meetings Booked"
-        value={metrics.meetings_today}
+        label="Messages Sent"
+        value={metrics.messages_sent}
+        change={metrics.reply_rate !== undefined ? metrics.reply_rate * 100 : undefined}
+        changeLabel="reply rate"
+        icon={<MessageSquare size={20} />}
+        accent="gold"
+      />
+      <MetricCard
+        label="Booked Calls"
+        value={metrics.booked_calls}
         icon={<CalendarCheck size={20} />}
         accent="gold"
       />

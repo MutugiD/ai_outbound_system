@@ -24,13 +24,15 @@ export function CreateCampaignModal({ isOpen, onClose }: CreateCampaignModalProp
     e.preventDefault();
     setLoading(true);
     try {
-      const campaign = await api.createCampaign({
+      const campaign = await api.campaigns.create({
         name: form.name,
-        channel: form.channel,
-        daily_limit: form.daily_limit,
-        status: 'draft',
-      } as Partial<Campaign>);
-      addCampaign(campaign as Campaign);
+        description: '',
+        goal: 'Generate leads',
+        tone: 'professional',
+        approval_mode: 'manual',
+        send_limits: { daily_limit: form.daily_limit },
+      });
+      addCampaign(campaign);
       onClose();
       setForm({ name: '', channel: 'email', daily_limit: 100, message_template: '' });
     } catch (err) {

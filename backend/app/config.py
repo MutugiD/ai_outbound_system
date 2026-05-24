@@ -47,15 +47,31 @@ class Settings(BaseSettings):
     BUILTWITH_API_KEY: str = ""
 
     # ── Email providers ─────────────────────────────────────────────────
-    SENDGRID_API_KEY: str = ""
+    # ── Email Provider ──────────────────────────────────────────────────
+    # Brevo (primary): higher free daily volume.
+    BREVO_API_KEY: str = ""
+    # Configure Brevo webhooks to send `Authorization: Bearer <token>`.
+    BREVO_WEBHOOK_BEARER_TOKEN: str = ""
+
+    # Resend (secondary): Svix-signed webhooks + Receiving API.
     RESEND_API_KEY: str = ""
+    RESEND_WEBHOOK_SECRET: str = ""
+    RESEND_WEBHOOK_TOLERANCE_SECONDS: int = 300
+
+    # Other providers (optional / future)
+    SENDGRID_API_KEY: str = ""
     SMARTLEAD_API_KEY: str = ""
+
+    # Outbound email identity
     OUTREACH_FROM_EMAIL: str = ""
     OUTREACH_FROM_NAME: str = ""
     OUTREACH_REPLY_TO: str = ""
 
-    RESEND_WEBHOOK_SECRET: str = ""
-    RESEND_WEBHOOK_TOLERANCE_SECONDS: int = 300
+    # ── Gmail Inbox (IMAP polling for replies) ─────────────────────────
+    GMAIL_INBOX_EMAIL: str = ""
+    GMAIL_INBOX_APP_PASSWORD: str = ""
+    INBOX_POLL_INTERVAL_MINUTES: int = 2
+    AUTO_RESPOND_ENABLED: bool = False  # Start disabled for safety
 
     # ── Scraping / Search ───────────────────────────────────────────────
     SERPAPI_KEY: str = ""

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { SettingsContent } from '@/components/settings';
-import { api } from '@/services';
 import type { ApiConfig } from '@/types';
 import { useUIStore } from '@/stores';
 
@@ -9,30 +8,21 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<ApiConfig | null>(null);
 
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const data = await api.getApiConfig();
-        setConfig(data);
-      } catch {
-        // Use default config if API not available
-        setConfig({
-          openai_key_set: true,
-          resend_key_set: true,
-          linkedin_connected: false,
-          twilio_connected: false,
-        });
-      }
-    };
-    loadConfig();
+    // Settings API not yet available — use defaults
+    setConfig({
+      openai_key_set: false,
+      resend_key_set: false,
+      linkedin_connected: false,
+      twilio_connected: false,
+    });
   }, []);
 
   const handleUpdateConfig = async (updates: Partial<ApiConfig>) => {
     try {
-      const updated = await api.updateApiConfig(updates);
-      setConfig(updated);
-      addNotification({ type: 'success', message: 'Settings updated successfully' });
+      // Settings update API not yet available — update locally
+      setConfig((prev) => prev ? { ...prev, ...updates } : null);
+      addNotification({ type: 'success', message: 'Settings updated' });
     } catch {
-      // Update locally if API fails
       setConfig((prev) => prev ? { ...prev, ...updates } : null);
       addNotification({ type: 'success', message: 'Settings updated' });
     }

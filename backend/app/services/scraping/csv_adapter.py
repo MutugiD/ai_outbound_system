@@ -117,7 +117,9 @@ class CSVAdapter(BaseLeadSourceAdapter):
 
         if isinstance(file_input, (str, Path)):
             return await self._read_from_path(str(file_input), delimiter, encoding)
-        elif isinstance(file_input, UploadFile):
+        # Check for UploadFile-like objects (Starlette/FastAPI file uploads)
+        # Use duck-type check to avoid isinstance issues with different module imports
+        if hasattr(file_input, "read") and hasattr(file_input, "filename"):
             return await self._read_from_upload(file_input, delimiter, encoding)
         else:
             raise TypeError(f"Unsupported file input type: {type(file_input)}")

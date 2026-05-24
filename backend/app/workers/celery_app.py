@@ -35,13 +35,13 @@ celery_app.conf.task_default_queue = "default"
 
 # ── Beat schedule: periodic tasks ─────────────────────────────────────────
 celery_app.conf.beat_schedule = {
-    "daily-lead-discovery": {
-        "task": "app.workers.scraping_tasks.run_daily_lead_discovery",
-        "schedule": crontab(hour=6, minute=0),  # 06:00 UTC daily
-    },
     "check-inboxes": {
         "task": "app.workers.inbox_tasks.check_inboxes",
         "schedule": crontab(minute="*/2"),  # every 2 minutes
+    },
+    "daily-lead-discovery": {
+        "task": "app.workers.scraping_tasks.run_daily_lead_discovery",
+        "schedule": crontab(hour=6, minute=0),  # 06:00 UTC daily
     },
     "process-follow-ups": {
         "task": "app.workers.outreach_tasks.process_follow_ups_all_teams",

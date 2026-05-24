@@ -6,6 +6,7 @@ provider-specific webhook signing secrets.
 
 from __future__ import annotations
 
+import hmac
 import json
 from datetime import datetime
 import uuid
@@ -20,10 +21,36 @@ from app.models.message import OutreachMessage
 from app.models.reply import Reply
 from app.rate_limit import rate_limit
 from app.services.email.resend_service import retrieve_received_email
+from app.services.email.inbound_processor import InboundEmailProcessor
 from app.services.webhooks.svix_verify import WebhookVerificationError, verify_svix_webhook
 from app.workers.inbox_tasks import process_new_reply as process_new_reply_task
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+
+def _sanitize_for_log(value: object) -> str:
+    return str(value).replace("\r", "").replace("\n", "")
+
+
+def _parse_bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    value = authorization.strip()
+    if value.lower().startswith("bearer "):
+        token = value[7:].strip()
+    else:
+        token = value
+    return token or None
+
+
+def _require_brevo_webhook_auth(headers) -> None:
+    if not settings.BREVO_WEBHOOK_BEARER_TOKEN:
+        raise HTTPException(status_code=503, detail="BREVO_WEBHOOK_BEARER_TOKEN not configured")
+
+    provided = _parse_bearer_token(headers.get("authorization"))
+    expected = settings.BREVO_WEBHOOK_BEARER_TOKEN
+    if not provided or not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Invalid webhook authorization")
 
 
 def _parse_iso8601(ts: str | None) -> datetime | None:
@@ -58,6 +85,145 @@ def _parse_from_header(value: str | None) -> tuple[str | None, str | None]:
         email = v.split("<", 1)[1].split(">", 1)[0].strip() or None
         return email, name
     return v, None
+
+
+def _apply_lifecycle_event(
+    *,
+    message: OutreachMessage,
+    event_type: str | None,
+    created_at: datetime | None,
+    data: dict,
+) -> bool:
+    """Apply a normalized email lifecycle event to an OutreachMessage.
+
+    Returns True if the event was handled, False if ignored/unknown.
+    """
+    if event_type == "email.delivered":
+        message.status = "delivered"
+        message.delivered_at = created_at or datetime.utcnow()
+        return True
+    if event_type == "email.opened":
+        message.status = "opened"
+        message.opened_at = created_at or datetime.utcnow()
+        return True
+    if event_type == "email.clicked":
+        message.status = "clicked"
+        message.clicked_at = created_at or datetime.utcnow()
+        return True
+    if event_type == "email.bounced":
+        message.status = "bounced"
+        bounce = data.get("bounce") or {}
+        message.error = bounce.get("message") or data.get("reason") or message.error
+        return True
+    if event_type == "email.failed":
+        message.status = "failed"
+        message.error = (data.get("error") or {}).get("message") or data.get("reason") or message.error
+        return True
+    if event_type == "email.complained":
+        message.status = "failed"
+        message.error = "complained"
+        return True
+    if event_type in ("email.sent", "email.scheduled"):
+        if message.status in ("approved", "scheduled"):
+            message.status = "sent"
+            message.sent_at = created_at or message.sent_at or datetime.utcnow()
+        return True
+    return False
+
+
+@router.post(
+    "/brevo",
+    response_model=dict,
+    dependencies=[Depends(rate_limit(limit=300, window_seconds=60, scope="webhooks:brevo"))],
+)
+async def brevo_events_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Handle Brevo email events (delivery + inbound parsing).
+
+    Brevo webhooks are authenticated via a bearer token configured when creating the webhook.
+    """
+    _require_brevo_webhook_auth(request.headers)
+
+    raw = await request.body()
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    events = payload if isinstance(payload, list) else [payload]
+    processed = 0
+
+    for event in events:
+        if not isinstance(event, dict):
+            continue
+
+        event_type = event.get("event") or event.get("type") or ""
+
+        # Inbound parse (Brevo inbound webhook)
+        if event_type in ("inbound", "inbound_email") or "raw-body" in event or "raw_body" in event:
+            try:
+                processor = InboundEmailProcessor(db)
+                reply = await processor.process_brevo_inbound(event)
+                if reply:
+                    process_new_reply_task.delay(str(reply.id))
+                    processed += 1
+            except Exception:
+                # Idempotent success; provider may retry. Don't leak internal errors.
+                processed += 1
+            continue
+
+        # Delivery lifecycle events
+        message_id = event.get("message-id") or event.get("message_id") or ""
+        if not message_id:
+            hdrs = event.get("headers") or {}
+            if isinstance(hdrs, dict):
+                message_id = hdrs.get("X-Message-ID") or hdrs.get("x-message-id") or ""
+
+        if not message_id:
+            continue
+
+        brevo_to_internal = {
+            "delivered": "email.delivered",
+            "opened": "email.opened",
+            "click": "email.clicked",
+            "clicked": "email.clicked",
+            "bounce": "email.bounced",
+            "soft_bounced": "email.bounced",
+            "blocked": "email.bounced",
+            "error": "email.failed",
+            "complaint": "email.complained",
+            "spam": "email.complained",
+            "invalid_email": "email.bounced",
+            "deferred": "email.deferred",
+            "unsubscribed": "email.unsubscribed",
+            "sent": "email.sent",
+        }
+        normalized = brevo_to_internal.get(str(event_type), str(event_type))
+
+        msg_result = await db.execute(
+            select(OutreachMessage).where(
+                OutreachMessage.provider == "brevo",
+                OutreachMessage.provider_message_id == str(message_id),
+            )
+        )
+        message = msg_result.scalar_one_or_none()
+        if not message:
+            continue
+
+        handled = _apply_lifecycle_event(
+            message=message,
+            event_type=normalized,
+            created_at=_parse_iso8601(event.get("date") or event.get("created_at")),
+            data=event,
+        )
+        if handled:
+            db.add(message)
+            await db.commit()
+            processed += 1
+
+    return {"status": "ok", "processed": processed}
 
 
 @router.post(
@@ -157,35 +323,9 @@ async def resend_events_webhook(
         # Idempotent success: provider may send events for non-tracked emails.
         return {"status": "ok", "note": "message_not_found"}
 
-    # Map Resend event types to message statuses/timestamps.
-    # Note: events can arrive out-of-order.
-    if event_type == "email.delivered":
-        message.status = "delivered"
-        message.delivered_at = created_at or datetime.utcnow()
-    elif event_type == "email.opened":
-        message.status = "opened"
-        message.opened_at = created_at or datetime.utcnow()
-    elif event_type == "email.clicked":
-        message.status = "clicked"
-        message.clicked_at = created_at or datetime.utcnow()
-    elif event_type == "email.bounced":
-        message.status = "bounced"
-        bounce = data.get("bounce") or {}
-        message.error = bounce.get("message") or message.error
-    elif event_type == "email.failed":
-        message.status = "failed"
-        message.error = (data.get("error") or {}).get("message") or message.error
-    elif event_type == "email.complained":
-        message.status = "failed"
-        message.error = "complained"
-    elif event_type in ("email.sent", "email.scheduled"):
-        # Informational; keep our status as-is unless still pending.
-        if message.status in ("approved", "scheduled"):
-            message.status = "sent"
-            message.sent_at = created_at or message.sent_at or datetime.utcnow()
-    else:
-        # Unknown or unhandled event type.
-        return {"status": "ignored", "type": event_type}
+    handled = _apply_lifecycle_event(message=message, event_type=event_type, created_at=created_at, data=data)
+    if not handled:
+        return {"status": "ignored", "type": _sanitize_for_log(event_type)}
 
     db.add(message)
     await db.commit()

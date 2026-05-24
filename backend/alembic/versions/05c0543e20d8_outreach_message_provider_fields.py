@@ -31,4 +31,3 @@ def downgrade() -> None:
     op.drop_column("outreach_messages", "to_email")
     op.drop_column("outreach_messages", "provider_message_id")
     op.drop_column("outreach_messages", "provider")
-

@@ -51,4 +51,3 @@ def downgrade() -> None:
     op.drop_column("api_keys", "last4")
     op.drop_column("api_keys", "key_id")
     op.drop_column("api_keys", "ciphertext")
-

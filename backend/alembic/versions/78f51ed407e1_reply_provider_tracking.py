@@ -31,4 +31,3 @@ def downgrade() -> None:
     op.drop_index("idx_replies_lead", table_name="replies")
     op.drop_column("replies", "provider_inbound_id")
     op.drop_column("replies", "provider")
-

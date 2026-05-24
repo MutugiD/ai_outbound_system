@@ -1,1 +1,1 @@
-export { SimpleBarChart, DonutChart, ConversionFunnel, demoAnalyticsData } from './AnalyticsCharts';
+export { SimpleBarChart, DonutChart, ConversionFunnel } from './AnalyticsCharts';
