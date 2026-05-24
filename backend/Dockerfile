@@ -21,6 +21,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Build metadata (for /version endpoint)
+ARG APP_VERSION=""
+ARG GIT_SHA=""
+ENV APP_VERSION=$APP_VERSION
+ENV GIT_SHA=$GIT_SHA
+
 # Install runtime system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 && \

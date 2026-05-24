@@ -57,3 +57,13 @@ app.include_router(api_router)
 @app.get("/health", tags=["health"])
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/version", tags=["health"])
+async def version():
+    """Return build/deploy version information (for rollout + rollback verification)."""
+    return {
+        "version": settings.VERSION,
+        "app_version": settings.APP_VERSION or settings.VERSION,
+        "git_sha": settings.GIT_SHA,
+    }

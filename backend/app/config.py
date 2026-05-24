@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "AI Outbound OS"
     VERSION: str = "0.1.0"
+    APP_VERSION: str = ""
+    GIT_SHA: str = ""
     APP_ENV: str = "development"
     DEBUG: bool = False
 

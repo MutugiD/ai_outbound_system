@@ -107,3 +107,5 @@ Resend configuration:
 - Set `OUTREACH_REPLY_TO` to include the message UUID for inbound mapping, e.g. `replies+{message_id}@yourdomain.com`.
 - Configure Resend webhook events to hit `POST /api/v1/webhooks/resend` and set `RESEND_WEBHOOK_SECRET`.
 
+Deploy/rollback verification:
+- Backend exposes `GET /version` to confirm the running image tag (`app_version`) and `git_sha`.
