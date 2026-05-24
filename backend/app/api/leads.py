@@ -29,6 +29,7 @@ from app.services.scraping.website_adapter import WebsiteAdapter
 from app.services.scraping.normalizer import LeadNormalizer
 from app.services.scraping.deduplicator import LeadDeduplicator
 from app.services.scraping.base_adapter import RawLead, NormalizedLead
+from app.rate_limit import rate_limit
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -239,7 +240,11 @@ async def _ingest_leads(
 # ── Import CSV ─────────────────────────────────────────────────────────────
 
 
-@router.post("/import-csv", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/import-csv",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(10, 60, "leads_import_csv"))],
+)
 async def import_csv(
     file: UploadFile = File(..., description="CSV file to import"),
     db: AsyncSession = Depends(get_db),
@@ -261,7 +266,11 @@ async def import_csv(
 # ── Scrape Reddit ──────────────────────────────────────────────────────────
 
 
-@router.post("/scrape-reddit", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/scrape-reddit",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "leads_scrape_reddit"))],
+)
 async def scrape_reddit(
     keywords: Optional[list[str]] = Query(None, description="Buying signal keywords to search for"),
     subreddits: Optional[list[str]] = Query(None, description="Subreddits to search"),
@@ -293,7 +302,11 @@ async def scrape_reddit(
 # ── Scrape LinkedIn ────────────────────────────────────────────────────────
 
 
-@router.post("/scrape-linkedin", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/scrape-linkedin",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "leads_scrape_linkedin"))],
+)
 async def scrape_linkedin(
     keywords: str = Query(..., description="Job search keywords"),
     location: str = Query("United States", description="Location filter"),
@@ -328,7 +341,11 @@ async def scrape_linkedin(
 # ── Scrape Website ─────────────────────────────────────────────────────────
 
 
-@router.post("/scrape-website", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/scrape-website",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "leads_scrape_website"))],
+)
 async def scrape_website(
     domain: str = Query(..., description="Domain to crawl (e.g. acme.com)"),
     db: AsyncSession = Depends(get_db),

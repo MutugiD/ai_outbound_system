@@ -14,6 +14,7 @@ from app.models.signal import BuyingSignal
 from app.models.score import LeadScore
 from app.models.audit import WebsiteAudit
 from app.models.user import User
+from app.rate_limit import rate_limit
 from app.services.enrichment.enrichment_service import EnrichmentService
 from app.services.ai.signal_detector import SignalDetector
 from app.services.ai.scoring_service import ScoringService
@@ -26,7 +27,11 @@ router = APIRouter(prefix="", tags=["enrichment"])
 # ── Enrich lead ───────────────────────────────────────────────────────────────
 
 
-@router.post("/leads/{lead_id}/enrich", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/leads/{lead_id}/enrich",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "enrich_lead"))],
+)
 async def enrich_lead(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -53,7 +58,11 @@ async def enrich_lead(
 # ── Detect signals ────────────────────────────────────────────────────────────
 
 
-@router.post("/leads/{lead_id}/detect-signals", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/leads/{lead_id}/detect-signals",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "detect_signals"))],
+)
 async def detect_signals(
     lead_id: uuid.UUID,
     method: str = "both",
@@ -93,7 +102,11 @@ async def detect_signals(
 # ── Calculate score ───────────────────────────────────────────────────────────
 
 
-@router.post("/leads/{lead_id}/score", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/leads/{lead_id}/score",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "score_lead"))],
+)
 async def score_lead(
     lead_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -136,7 +149,11 @@ async def score_lead(
 # ── Audit website ──────────────────────────────────────────────────────────────
 
 
-@router.post("/companies/{company_id}/audit-website", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/companies/{company_id}/audit-website",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(rate_limit(20, 60, "audit_website"))],
+)
 async def audit_website(
     company_id: uuid.UUID,
     domain: str | None = None,

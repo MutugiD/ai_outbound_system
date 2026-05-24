@@ -16,6 +16,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.team import Team
 from app.models.user import User
+from app.rate_limit import rate_limit
 from app.schemas.auth import (
     LoginRequest,
     RefreshRequest,
@@ -52,7 +53,12 @@ def _create_refresh_token(user_id: str, team_id: str) -> str:
 # ── Register ──────────────────────────────────────────────────────────────
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(5, 60, "auth_register"))],
+)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     # Check uniqueness
     existing = (await db.execute(select(User).where(User.email == body.email))).scalar_one_or_none()
@@ -81,7 +87,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 # ── Login ─────────────────────────────────────────────────────────────────
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(rate_limit(10, 60, "auth_login"))])
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
@@ -106,7 +112,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 # ── Refresh ───────────────────────────────────────────────────────────────
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post("/refresh", response_model=TokenResponse, dependencies=[Depends(rate_limit(30, 60, "auth_refresh"))])
 async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     try:
         payload = jwt.decode(body.refresh_token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
