@@ -3,26 +3,18 @@
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user_from_token
+from app.dependencies import get_current_user
 from app.models.contact import Contact
 from app.models.company import Company
 from app.models.user import User
 from app.schemas.contact import ContactUpdate, ContactResponse, ContactDetailResponse
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
-
-
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
 
 
 # ── Get contact ────────────────────────────────────────────────────────────
@@ -32,7 +24,7 @@ async def _get_current_user(
 async def get_contact(
     contact_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(select(Contact).where(Contact.id == contact_id))
     contact = result.scalar_one_or_none()
@@ -69,7 +61,7 @@ async def update_contact(
     contact_id: uuid.UUID,
     body: ContactUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(select(Contact).where(Contact.id == contact_id))
     contact = result.scalar_one_or_none()

@@ -140,3 +140,14 @@ def process_inbound_reply(self, reply_id: str, **kwargs):
         return loop.run_until_complete(_process())
     finally:
         loop.close()
+
+
+@celery_app.task(
+    bind=True,
+    base=BaseTask,
+    name="app.workers.inbox_tasks.process_new_reply",
+    queue="inbox",
+)
+def process_new_reply(self, reply_id: str, **kwargs):
+    """Backward-compatible alias for processing a newly ingested reply."""
+    return process_inbound_reply(reply_id=reply_id)

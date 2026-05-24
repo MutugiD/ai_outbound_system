@@ -30,7 +30,7 @@ def send_message(self, message_id: str, **kwargs):
     from app.models.message import OutreachMessage
     from app.config import settings
     from app.services.activity_service import log_activity
-    from app.services.email.resend_service import send_email
+    from app.services.email.delivery import send_outbound_email
 
     async def _send():
         async with async_session() as db:
@@ -90,14 +90,22 @@ def send_message(self, message_id: str, **kwargs):
                     except Exception:
                         reply_to = settings.OUTREACH_REPLY_TO
 
-                result = await send_email(
+                extra_headers = {
+                    "X-Message-ID": str(message.id),
+                    "X-Lead-ID": str(lead.id),
+                }
+                if message.campaign_id:
+                    extra_headers["X-Campaign-ID"] = str(message.campaign_id)
+
+                provider, provider_message_id = await send_outbound_email(
                     to_email=to_email,
                     subject=subject,
                     text_body=message.body,
                     reply_to=reply_to,
+                    headers=extra_headers,
                 )
-                message.provider = "resend"
-                message.provider_message_id = result.provider_message_id
+                message.provider = provider
+                message.provider_message_id = provider_message_id
                 message.to_email = to_email
                 message.status = "sent"
                 message.sent_at = datetime.utcnow()
@@ -120,23 +128,26 @@ def send_message(self, message_id: str, **kwargs):
 
                 await db.commit()
                 logger.info(
-                    "Message %s sent via Resend (provider_message_id=%s)", message_id, result.provider_message_id
+                    "Message %s sent via %s (provider_message_id=%s)",
+                    message_id,
+                    message.provider,
+                    provider_message_id,
                 )
                 return {
                     "message_id": message_id,
                     "status": "sent",
-                    "provider": "resend",
-                    "provider_message_id": result.provider_message_id,
+                    "provider": message.provider,
+                    "provider_message_id": provider_message_id,
                 }
             except Exception as exc:
                 logger.exception("Failed to send message %s: %s", message_id, exc)
-                message.provider = "resend"
+                message.provider = message.provider or "unknown"
                 message.to_email = to_email
                 message.status = "failed"
-                message.error = str(exc)
+                message.error = "send_failed"
                 db.add(message)
                 await db.commit()
-                return {"message_id": message_id, "status": "failed", "error": str(exc)}
+                return {"message_id": message_id, "status": "failed", "error": "send_failed"}
 
     loop = asyncio.new_event_loop()
     try:

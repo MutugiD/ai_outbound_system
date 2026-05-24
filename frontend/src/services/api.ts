@@ -2,11 +2,11 @@
  * API Client — connects to the real backend at http://localhost:8001
  *
  * Auth tokens (JWT) are stored in localStorage.
- * Most backend endpoints accept the token via `?Authorization=Bearer <token>`
- * query parameter. Auth endpoints use request bodies.
+ * Protected endpoints require `Authorization: Bearer <access_token>`.
+ * Auth endpoints use request bodies.
  */
 
-const API_BASE = 'http://localhost:8001/api/v1';
+const API_BASE = '/api/v1';
 
 // ── Token helpers ─────────────────────────────────────────────────────────
 
@@ -36,12 +36,7 @@ async function request<T>(
 ): Promise<T> {
   const { params = {}, ...fetchOptions } = options;
 
-  // Attach auth token as a query parameter (backend requirement)
   const token = getAccessToken();
-  if (token) {
-    params['Authorization'] = `Bearer ${token}`;
-  }
-
   const queryString = Object.keys(params).length
     ? '?' + new URLSearchParams(params).toString()
     : '';
@@ -51,6 +46,10 @@ async function request<T>(
   const headers: Record<string, string> = {
     ...(fetchOptions.headers as Record<string, string> ?? {}),
   };
+
+  if (token && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   // Don't set Content-Type for FormData
   if (!(fetchOptions.body instanceof FormData)) {
@@ -68,15 +67,11 @@ async function request<T>(
     if (refreshed) {
       // Retry with new token
       const newToken = getAccessToken()!;
-      const retryParams = { ...params, Authorization: `Bearer ${newToken}` };
-      const retryQueryString = Object.keys(retryParams).length
-        ? '?' + new URLSearchParams(retryParams).toString()
-        : '';
-      const retryUrl = `${API_BASE}${path}${retryQueryString}`;
+      const retryUrl = `${API_BASE}${path}${queryString}`;
 
       const retryResponse = await fetch(retryUrl, {
         ...fetchOptions,
-        headers: { ...headers },
+        headers: { ...headers, Authorization: `Bearer ${newToken}` },
       });
 
       if (!retryResponse.ok) {

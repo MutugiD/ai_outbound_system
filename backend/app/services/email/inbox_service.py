@@ -13,7 +13,6 @@ from email.header import decode_header
 from email.utils import parseaddr
 from typing import Optional
 
-import aioimaplib
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,6 +27,12 @@ logger = logging.getLogger(__name__)
 # Gmail IMAP settings
 GMAIL_IMAP_HOST = "imap.gmail.com"
 GMAIL_IMAP_PORT = 993
+
+
+def _sanitize_for_log(value: str) -> str:
+    if not value:
+        return ""
+    return value.replace("\r", "").replace("\n", "")
 
 
 def _decode_header(header_value: str) -> str:
@@ -84,10 +89,15 @@ class InboxService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self._client: Optional[aioimaplib.IMAP4_SSL] = None
+        self._client: Optional[object] = None
 
     async def connect(self) -> None:
         """Connect to Gmail IMAP and authenticate."""
+        try:
+            import aioimaplib  # type: ignore
+        except Exception as exc:
+            raise RuntimeError("Inbox polling requires aioimaplib to be installed") from exc
+
         email_addr = settings.GMAIL_INBOX_EMAIL
         app_password = settings.GMAIL_INBOX_APP_PASSWORD
 
@@ -122,7 +132,7 @@ class InboxService:
         """Match an incoming reply to a sent outreach message.
 
         Matching strategy (in priority order):
-        1. In-Reply-To header matches OutreachMessage.resend_id (provider message ID)
+        1. In-Reply-To header matches OutreachMessage.provider_message_id (provider message ID)
         2. In-Reply-To header matches OutreachMessage.id (our UUID in X-Message-ID)
         3. From email matches a lead's contact email + subject resembles our subject
         """
@@ -131,9 +141,9 @@ class InboxService:
             # Clean up the message ID (remove angle brackets)
             clean_id = in_reply_to.strip().strip("<>")
 
-            # Try matching against resend_id (provider message ID)
+            # Try matching against provider message ID
             result = await self.db.execute(
-                select(OutreachMessage).where(OutreachMessage.resend_id == clean_id)
+                select(OutreachMessage).where(OutreachMessage.provider_message_id == clean_id)
             )
             msg = result.scalar_one_or_none()
             if msg:
@@ -148,10 +158,9 @@ class InboxService:
             except (ValueError, AttributeError):
                 pass
 
-            # Brevo message IDs can be like <202605240131.93049087129@smtp-relay.mailin.fr>
-            # Try partial match
+            # Long provider message IDs can include a full rfc822-like token; try partial match.
             result = await self.db.execute(
-                select(OutreachMessage).where(OutreachMessage.resend_id.contains(clean_id[:30]))
+                select(OutreachMessage).where(OutreachMessage.provider_message_id.contains(clean_id[:30]))
             )
             msg = result.scalar_one_or_none()
             if msg:
@@ -160,15 +169,11 @@ class InboxService:
         # Strategy 3: Match by from_email to a lead + subject similarity
         if from_email:
             # Find a lead with this contact email
-            result = await self.db.execute(
-                select(Contact).where(Contact.email == from_email)
-            )
+            result = await self.db.execute(select(Contact).where(Contact.email == from_email))
             contact = result.scalar_one_or_none()
             if contact:
                 # Find outreach messages sent to this lead
-                result = await self.db.execute(
-                    select(Lead).where(Lead.contact_id == contact.id)
-                )
+                result = await self.db.execute(select(Lead).where(Lead.contact_id == contact.id))
                 lead = result.scalar_one_or_none()
                 if lead:
                     # Find the most recent sent message to this lead
@@ -187,14 +192,10 @@ class InboxService:
 
     async def _find_lead_by_email(self, from_email: str) -> Optional[uuid.UUID]:
         """Find a lead ID by the sender's email address."""
-        result = await self.db.execute(
-            select(Contact).where(Contact.email == from_email)
-        )
+        result = await self.db.execute(select(Contact).where(Contact.email == from_email))
         contact = result.scalar_one_or_none()
         if contact:
-            result = await self.db.execute(
-                select(Lead).where(Lead.contact_id == contact.id)
-            )
+            result = await self.db.execute(select(Lead).where(Lead.contact_id == contact.id))
             lead = result.scalar_one_or_none()
             if lead:
                 return lead.id
@@ -234,8 +235,8 @@ class InboxService:
                 reply = await self._process_single_message(msg_num)
                 if reply:
                     replies.append(reply)
-            except Exception as exc:
-                logger.error("Error processing message %s: %s", msg_num, exc)
+            except Exception:
+                logger.exception("Error processing message %s", _sanitize_for_log(str(msg_num)))
                 continue
 
         return replies
@@ -274,9 +275,7 @@ class InboxService:
 
         # Dedup by Message-ID header
         if message_id_header:
-            existing = await self.db.execute(
-                select(Reply).where(Reply.body.contains(message_id_header.strip("<>")))
-            )
+            existing = await self.db.execute(select(Reply).where(Reply.body.contains(message_id_header.strip("<>"))))
             # Simple dedup — check if we already have a reply from this sender with this subject
             # More robust: use a separate message_uid field, but this works for now
 

@@ -6,14 +6,9 @@ Tests real data flow through the full outbound pipeline.
 import asyncio
 import io
 import os
-import sys
 import tempfile
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-pytestmark = pytest.mark.skip(reason="Manual E2E pipeline script (not stable for CI unit tests)")
 
 from app.services.scraping.csv_adapter import CSVAdapter
 from app.services.scraping.reddit_adapter import RedditAdapter
@@ -22,6 +17,8 @@ from app.services.scraping.normalizer import LeadNormalizer
 from app.services.scraping.deduplicator import LeadDeduplicator
 from app.services.ai.signal_detector import SignalDetector
 from app.services.ai.scoring_service import _band
+
+pytestmark = pytest.mark.skip(reason="Manual E2E pipeline script (not stable for CI unit tests)")
 
 CSV_DATA = """company_name,contact_name,email,phone,title,industry,website,source
 Acme Logistics,John Smith,john@acmelogistics.com,+1-555-0101,VP Operations,Logistics,https://acmelogistics.com,cold_outreach

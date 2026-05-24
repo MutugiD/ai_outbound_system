@@ -48,24 +48,24 @@ class Settings(BaseSettings):
 
     # ── Email providers ─────────────────────────────────────────────────
     # ── Email Provider ──────────────────────────────────────────────────
-    EMAIL_PROVIDER: str = "brevo"  # "brevo" or "resend"
-    EMAIL_FROM_ADDRESS: str = "outreach@outbound-os.com"
-    EMAIL_FROM_NAME: str = "Outreach Team"
-    EMAIL_REPLY_TO: str = ""  # Reply-To address for inbound responses (must be a real inbox)
-    # Brevo (300 emails/day free)
+    # Brevo (primary): higher free daily volume.
     BREVO_API_KEY: str = ""
-    BREVO_WEBHOOK_SECRET: str = ""
-    # Resend (100 emails/day free, requires domain verification)
-    RESEND_API_KEY: str = ""
-    RESEND_WEBHOOK_SECRET: str = ""
-    SMARTLEAD_API_KEY: str = ""
-    OUTREACH_FROM_EMAIL: str = ""
-    OUTREACH_FROM_NAME: str = ""
-    OUTREACH_REPLY_TO: str = ""
+    # Configure Brevo webhooks to send `Authorization: Bearer <token>`.
+    BREVO_WEBHOOK_BEARER_TOKEN: str = ""
 
+    # Resend (secondary): Svix-signed webhooks + Receiving API.
+    RESEND_API_KEY: str = ""
     RESEND_WEBHOOK_SECRET: str = ""
     RESEND_WEBHOOK_TOLERANCE_SECONDS: int = 300
 
+    # Other providers (optional / future)
+    SENDGRID_API_KEY: str = ""
+    SMARTLEAD_API_KEY: str = ""
+
+    # Outbound email identity
+    OUTREACH_FROM_EMAIL: str = ""
+    OUTREACH_FROM_NAME: str = ""
+    OUTREACH_REPLY_TO: str = ""
 
     # ── Gmail Inbox (IMAP polling for replies) ─────────────────────────
     GMAIL_INBOX_EMAIL: str = ""

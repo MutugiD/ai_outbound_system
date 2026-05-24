@@ -1,4 +1,3 @@
-from app.services.email.email_service import EmailService
-from app.services.email.event_tracker import EmailEventTracker
+"""Email provider integrations and delivery helpers."""
 
-__all__ = ["EmailService", "EmailEventTracker"]
+__all__: list[str] = []

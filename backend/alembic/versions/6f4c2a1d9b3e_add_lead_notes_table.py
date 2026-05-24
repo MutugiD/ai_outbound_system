@@ -1,17 +1,19 @@
 """add lead_notes table
 
-Revision: a1b2c3d4e5f6
-Revises: 9ac543584d73
-Create Date: 2026-05-24 02:00:00.000000
+Revision ID: 6f4c2a1d9b3e
+Revises: e46e530b6def
+Create Date: 2026-05-24
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 import sqlmodel
 
+
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
-down_revision = "9ac543584d73"
+revision = "6f4c2a1d9b3e"
+down_revision = "e46e530b6def"
 branch_labels = None
 depends_on = None
 

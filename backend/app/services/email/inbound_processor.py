@@ -27,6 +27,13 @@ from app.models.reply import Reply
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_for_log(value: str) -> str:
+    """Return a log-safe single-line representation of untrusted text."""
+    if not value:
+        return ""
+    return value.replace("\r", "").replace("\n", "")
+
+
 def _decode_header(header_value: str) -> str:
     """Decode an email header value, handling encoded words."""
     if not header_value:
@@ -151,9 +158,11 @@ class InboundEmailProcessor:
         message_id_header: str,
     ) -> Optional[Reply]:
         """Core reply processing: match to outreach, create Reply record."""
+        safe_from_email = _sanitize_for_log(from_email)
+        safe_subject_preview = _sanitize_for_log(subject[:50]) if subject else ""
         # Skip if no content at all
         if not body.strip() and not subject.strip():
-            logger.debug("Skipping empty message from %s", from_email)
+            logger.debug("Skipping empty message from %s", safe_from_email)
             return None
 
         # Match to a sent outreach message
@@ -176,7 +185,7 @@ class InboundEmailProcessor:
                 )
             )
             if existing.scalar_one_or_none():
-                logger.debug("Duplicate reply from %s for message %s, skipping", from_email, matched_message_id)
+                logger.debug("Duplicate reply from %s for message %s, skipping", safe_from_email, matched_message_id)
                 return None
 
         # Create Reply record
@@ -196,9 +205,11 @@ class InboundEmailProcessor:
         await self.db.refresh(reply)
 
         if not lead_id or lead_id == uuid.UUID(int=0):
-            logger.info("Unmatched reply from %s: %s", from_email, subject[:50])
+            logger.info("Unmatched reply from %s: %s", safe_from_email, safe_subject_preview)
         else:
-            logger.info("Matched reply from %s to message %s: %s", from_email, matched_message_id, subject[:50])
+            logger.info(
+                "Matched reply from %s to message %s: %s", safe_from_email, matched_message_id, safe_subject_preview
+            )
 
         return reply
 
@@ -213,9 +224,9 @@ class InboundEmailProcessor:
         if in_reply_to:
             clean_id = in_reply_to.strip()
 
-            # Try matching against resend_id (provider message ID)
+            # Try matching against provider message ID
             result = await self.db.execute(
-                select(OutreachMessage).where(OutreachMessage.resend_id == clean_id)
+                select(OutreachMessage).where(OutreachMessage.provider_message_id == clean_id)
             )
             msg = result.scalar_one_or_none()
             if msg:
@@ -230,10 +241,10 @@ class InboundEmailProcessor:
             except (ValueError, AttributeError):
                 pass
 
-            # Partial match for Brevo message IDs (long format)
+            # Partial match for long provider message IDs
             if len(clean_id) > 20:
                 result = await self.db.execute(
-                    select(OutreachMessage).where(OutreachMessage.resend_id.contains(clean_id[:30]))
+                    select(OutreachMessage).where(OutreachMessage.provider_message_id.contains(clean_id[:30]))
                 )
                 msg = result.scalar_one_or_none()
                 if msg:
@@ -241,14 +252,10 @@ class InboundEmailProcessor:
 
         # 2. Match by from_email to a lead's contact + most recent sent message
         if from_email:
-            result = await self.db.execute(
-                select(Contact).where(Contact.email == from_email).limit(1)
-            )
+            result = await self.db.execute(select(Contact).where(Contact.email == from_email).limit(1))
             contact = result.scalar_one_or_none()
             if contact:
-                result = await self.db.execute(
-                    select(Lead).where(Lead.contact_id == contact.id).limit(1)
-                )
+                result = await self.db.execute(select(Lead).where(Lead.contact_id == contact.id).limit(1))
                 lead = result.scalar_one_or_none()
                 if lead:
                     result = await self.db.execute(
@@ -266,14 +273,10 @@ class InboundEmailProcessor:
 
     async def _find_lead_by_email(self, from_email: str) -> Optional[uuid.UUID]:
         """Find a lead ID by the sender's email address."""
-        result = await self.db.execute(
-            select(Contact).where(Contact.email == from_email).limit(1)
-        )
+        result = await self.db.execute(select(Contact).where(Contact.email == from_email).limit(1))
         contact = result.scalar_one_or_none()
         if contact:
-            result = await self.db.execute(
-                select(Lead).where(Lead.contact_id == contact.id).limit(1)
-            )
+            result = await self.db.execute(select(Lead).where(Lead.contact_id == contact.id).limit(1))
             lead = result.scalar_one_or_none()
             if lead:
                 return lead.id

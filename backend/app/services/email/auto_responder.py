@@ -20,7 +20,7 @@ from app.models.lead import Lead
 from app.models.message import OutreachMessage
 from app.models.reply import Reply, ReplyClassification
 from app.services.ai.reply_classifier import ReplyClassifier
-from app.services.email.email_service import EmailService
+from app.services.email.delivery import send_outbound_email
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,10 @@ class AutoResponder:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.classifier = ReplyClassifier()
-        self.email_service = EmailService(db)
+
+    @staticmethod
+    def _sanitize_for_log(value: object) -> str:
+        return str(value).replace("\r", "").replace("\n", "")
 
     async def process_reply(self, reply_id: uuid.UUID) -> dict:
         """Process an incoming reply: classify and optionally auto-respond.
@@ -71,12 +74,12 @@ class AutoResponder:
         # Step 1: Classify the reply
         try:
             classification = await self.classifier.classify(reply_id, self.db)
-        except Exception as exc:
-            logger.error("Classification failed for reply %s: %s", reply_id, exc)
+        except Exception:
+            logger.exception("Classification failed for reply %s", reply_id)
             return {
                 "reply_id": str(reply_id),
                 "classification": "error",
-                "error": str(exc),
+                "error": "Classification failed",
                 "auto_responded": False,
             }
 
@@ -87,7 +90,10 @@ class AutoResponder:
 
         logger.info(
             "Classified reply %s as '%s' (confidence=%.2f, action=%s)",
-            reply_id, category, confidence, recommended_action,
+            reply_id,
+            self._sanitize_for_log(category),
+            confidence,
+            self._sanitize_for_log(recommended_action),
         )
 
         # Step 2: Decide whether to auto-respond
@@ -194,6 +200,7 @@ class AutoResponder:
             return False
 
         from app.models.contact import Contact
+
         contact = await self.db.get(Contact, lead.contact_id)
         if not contact or not contact.email:
             logger.warning("Contact for lead %s has no email", reply.lead_id)
@@ -214,11 +221,13 @@ class AutoResponder:
             subject=response_subject,
             body=draft_body,
             status="approved",  # Auto-approved since classifier recommended it
-            personalization_sources={
-                "auto_response": True,
-                "reply_classification": classification.classification,
-                "original_reply_id": str(reply.id),
-            },
+            personalization_sources=[
+                {
+                    "auto_response": True,
+                    "reply_classification": classification.classification,
+                    "original_reply_id": str(reply.id),
+                }
+            ],
         )
         self.db.add(message)
         await self.db.flush()
@@ -226,29 +235,59 @@ class AutoResponder:
 
         # Send the email
         try:
-            sent = await self.email_service.send_message(message.id)
+            reply_to = None
+            if settings.OUTREACH_REPLY_TO:
+                try:
+                    reply_to = settings.OUTREACH_REPLY_TO.format(message_id=str(message.id), lead_id=str(lead.id))
+                except Exception:
+                    reply_to = settings.OUTREACH_REPLY_TO
+
+            provider, provider_message_id = await send_outbound_email(
+                to_email=contact.email,
+                subject=response_subject,
+                text_body=draft_body,
+                reply_to=reply_to,
+                headers={
+                    "X-Message-ID": str(message.id),
+                    "X-Lead-ID": str(lead.id),
+                },
+            )
+            message.provider = provider
+            message.provider_message_id = provider_message_id
+            message.to_email = contact.email
+            message.status = "sent"
+            message.sent_at = datetime.utcnow()
+            self.db.add(message)
             logger.info(
                 "Auto-response sent: message %s to %s (classification=%s)",
-                message.id, contact.email, classification.classification,
+                message.id,
+                contact.email,
+                classification.classification,
             )
-            return sent.status == "sent"
-        except Exception as exc:
-            logger.error("Failed to send auto-response %s: %s", message.id, exc)
+            return True
+        except Exception:
+            logger.exception("Failed to send auto-response %s", message.id)
+            message.status = "failed"
+            message.error = "send_failed"
+            self.db.add(message)
             return False
 
     async def _add_suppression(self, reply: Reply) -> None:
         """Add the reply sender to the suppression list."""
         from app.models.suppression import SuppressionList
 
-        result = await self.db.execute(
-            select(SuppressionList).where(SuppressionList.email == reply.from_email)
-        )
+        result = await self.db.execute(select(SuppressionList).where(SuppressionList.email == reply.from_email))
         existing = result.scalar_one_or_none()
         if not existing and reply.from_email:
+            team_id = uuid.UUID(int=0)
+            if reply.lead_id and reply.lead_id != uuid.UUID(int=0):
+                lead = await self.db.get(Lead, reply.lead_id)
+                if lead:
+                    team_id = lead.team_id
             suppression = SuppressionList(
                 email=reply.from_email,
                 reason="unsubscribe" if reply.from_email else "auto_suppress",
                 source="auto_responder",
-                team_id=uuid.UUID(int=0),
+                team_id=team_id,
             )
             self.db.add(suppression)

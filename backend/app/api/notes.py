@@ -8,21 +8,13 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import PaginationParams, get_current_user_from_token, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.note import LeadNote
 from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.note import NoteCreate, NoteUpdate, NoteResponse, NoteListResponse
 
 router = APIRouter(prefix="/leads/{lead_id}/notes", tags=["notes"])
-
-
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
 
 
 async def _verify_lead_access(lead_id: uuid.UUID, team_id: uuid.UUID, db: AsyncSession) -> Lead:
@@ -44,7 +36,7 @@ async def list_notes(
     per_page: int = Query(50, ge=1, le=200),
     note_type: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     lead = await _verify_lead_access(lead_id, current_user.team_id, db)
 
@@ -80,7 +72,7 @@ async def create_note(
     lead_id: uuid.UUID,
     body: NoteCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_lead_access(lead_id, current_user.team_id, db)
 
@@ -105,7 +97,7 @@ async def update_note(
     note_id: uuid.UUID,
     body: NoteUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_lead_access(lead_id, current_user.team_id, db)
 
@@ -135,7 +127,7 @@ async def delete_note(
     lead_id: uuid.UUID,
     note_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     await _verify_lead_access(lead_id, current_user.team_id, db)
 

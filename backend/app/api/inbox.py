@@ -8,10 +8,13 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.dependencies import get_current_user, require_role
+from app.models.lead import Lead
+from app.models.message import OutreachMessage
 from app.models.reply import Reply, ReplyClassification
 from app.services.email.inbox_service import InboxService
 from app.services.email.auto_responder import AutoResponder
-from app.services.ai.reply_classifier import ReplyClassifier
+from app.models.user import User
 
 router = APIRouter(prefix="/inbox", tags=["inbox"])
 
@@ -23,9 +26,15 @@ async def list_replies(
     limit: int = Query(50, le=200),
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List all inbound replies, optionally filtered."""
-    query = select(Reply).order_by(Reply.received_at.desc())
+    query = (
+        select(Reply)
+        .join(Lead, Lead.id == Reply.lead_id)
+        .where(Lead.team_id == current_user.team_id)
+        .order_by(Reply.received_at.desc())
+    )
 
     if lead_id:
         query = query.where(Reply.lead_id == uuid.UUID(lead_id))
@@ -37,11 +46,7 @@ async def list_replies(
     reply_ids = [r.id for r in replies]
     classifications = {}
     if reply_ids:
-        cls_result = await db.execute(
-            select(ReplyClassification).where(
-                ReplyClassification.reply_id.in_(reply_ids)
-            )
-        )
+        cls_result = await db.execute(select(ReplyClassification).where(ReplyClassification.reply_id.in_(reply_ids)))
         for cls in cls_result.scalars().all():
             classifications[cls.reply_id] = cls
 
@@ -78,6 +83,7 @@ async def list_replies(
 async def get_reply(
     reply_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific reply with its classification."""
     result = await db.execute(select(Reply).where(Reply.id == uuid.UUID(reply_id)))
@@ -85,10 +91,14 @@ async def get_reply(
     if not reply:
         raise HTTPException(status_code=404, detail="Reply not found")
 
+    if not reply.lead_id or reply.lead_id == uuid.UUID(int=0):
+        raise HTTPException(status_code=404, detail="Reply not found")
+    lead = await db.get(Lead, reply.lead_id)
+    if not lead or lead.team_id != current_user.team_id:
+        raise HTTPException(status_code=404, detail="Reply not found")
+
     # Get classification
-    cls_result = await db.execute(
-        select(ReplyClassification).where(ReplyClassification.reply_id == reply.id)
-    )
+    cls_result = await db.execute(select(ReplyClassification).where(ReplyClassification.reply_id == reply.id))
     classification = cls_result.scalar_one_or_none()
 
     item = {
@@ -122,8 +132,17 @@ async def get_reply(
 async def classify_reply(
     reply_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Classify a reply and optionally auto-respond."""
+    # Ensure team scoping by loading reply->lead.
+    reply_obj = (await db.execute(select(Reply).where(Reply.id == uuid.UUID(reply_id)))).scalar_one_or_none()
+    if not reply_obj or not reply_obj.lead_id or reply_obj.lead_id == uuid.UUID(int=0):
+        raise HTTPException(status_code=404, detail="Reply not found")
+    lead = await db.get(Lead, reply_obj.lead_id)
+    if not lead or lead.team_id != current_user.team_id:
+        raise HTTPException(status_code=404, detail="Reply not found")
+
     responder = AutoResponder(db)
     result = await responder.process_reply(uuid.UUID(reply_id))
     await db.commit()
@@ -133,6 +152,7 @@ async def classify_reply(
 @router.post("/check")
 async def check_inbox_now(
     db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_role("admin")),
 ):
     """Manually trigger an inbox check (poll Gmail for new replies)."""
     from app.config import settings
@@ -152,11 +172,13 @@ async def check_inbox_now(
                 responder = AutoResponder(db)
                 result = await responder.process_reply(reply.id)
                 results.append(result)
-            except Exception as exc:
-                results.append({
-                    "reply_id": str(reply.id),
-                    "error": str(exc),
-                })
+            except Exception:
+                results.append(
+                    {
+                        "reply_id": str(reply.id),
+                        "error": "Reply processing failed",
+                    }
+                )
 
         await db.commit()
         return {
@@ -164,8 +186,8 @@ async def check_inbox_now(
             "new_replies": len(replies),
             "results": results,
         }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Inbox check failed: {str(exc)}")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Inbox check failed")
     finally:
         await svc.disconnect()
 
@@ -176,9 +198,15 @@ async def list_classifications(
     limit: int = Query(50, le=200),
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """List all reply classifications."""
-    query = select(ReplyClassification).order_by(ReplyClassification.created_at.desc())
+    query = (
+        select(ReplyClassification)
+        .join(Lead, Lead.id == ReplyClassification.lead_id)
+        .where(Lead.team_id == current_user.team_id)
+        .order_by(ReplyClassification.created_at.desc())
+    )
 
     if category:
         query = query.where(ReplyClassification.classification == category)
@@ -209,22 +237,36 @@ async def list_classifications(
 @router.get("/stats")
 async def inbox_stats(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Get inbox reply statistics."""
     # Total replies
-    total_result = await db.execute(select(func.count(Reply.id)))
+    total_result = await db.execute(
+        select(func.count(Reply.id))
+        .select_from(Reply)
+        .join(Lead, Lead.id == Reply.lead_id)
+        .where(Lead.team_id == current_user.team_id)
+    )
     total = total_result.scalar()
 
     # Replies by classification
     cls_result = await db.execute(
         select(ReplyClassification.classification, func.count(ReplyClassification.id))
+        .join(Lead, Lead.id == ReplyClassification.lead_id)
+        .where(Lead.team_id == current_user.team_id)
         .group_by(ReplyClassification.classification)
     )
     by_category = {row[0]: row[1] for row in cls_result}
 
     # Unmatched replies (no lead)
+    # Unmatched replies: team-scoped via the correlated outreach message.
     unmatched_result = await db.execute(
-        select(func.count(Reply.id)).where(Reply.lead_id == uuid.UUID(int=0))
+        select(func.count(Reply.id))
+        .select_from(Reply)
+        .join(OutreachMessage, OutreachMessage.id == Reply.message_id)
+        .join(Lead, Lead.id == OutreachMessage.lead_id)
+        .where(Lead.team_id == current_user.team_id)
+        .where(Reply.lead_id == uuid.UUID(int=0))
     )
     unmatched = unmatched_result.scalar()
 

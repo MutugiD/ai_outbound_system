@@ -9,7 +9,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.config import settings
 from app.database import init_db
 from app.api.router import api_router
-from app.routers.webhooks import router as webhooks_router
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -53,7 +52,6 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
-app.include_router(webhooks_router)
 
 
 @app.get("/health", tags=["health"])

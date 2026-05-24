@@ -168,7 +168,7 @@ async def transition_lead(
     lead_id: uuid.UUID,
     body: PipelineTransitionRequest,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(_get_current_user),
+    current_user=Depends(get_current_user),
 ):
     """Transition a lead's pipeline stage, creating a PipelineTransition record and optional note."""
     from datetime import datetime
