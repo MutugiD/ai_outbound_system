@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import quote
 
 import httpx
 
 from app.config import settings
+
+_RESEND_EMAIL_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 @dataclass(frozen=True)
@@ -86,12 +90,15 @@ async def retrieve_received_email(*, email_id: str) -> ResendReceivedEmail:
     """Retrieve a received (inbound) email via Resend's Receiving API."""
     if not settings.RESEND_API_KEY:
         raise ValueError("RESEND_API_KEY not configured")
+    if not _RESEND_EMAIL_ID_RE.fullmatch(email_id):
+        raise ValueError("Invalid Resend email id format")
 
     headers = {
         "Authorization": f"Bearer {settings.RESEND_API_KEY}",
         "Content-Type": "application/json",
     }
-    url = f"https://api.resend.com/emails/receiving/{email_id}"
+    safe_email_id = quote(email_id, safe="")
+    url = f"https://api.resend.com/emails/receiving/{safe_email_id}"
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(url, headers=headers)
         resp.raise_for_status()
