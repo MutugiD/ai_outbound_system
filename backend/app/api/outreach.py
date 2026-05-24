@@ -34,6 +34,7 @@ from app.services.ai.personalization_engine import PersonalizationEngine
 from app.services.ai.reply_classifier import ReplyClassifier
 from app.services.campaign_service import CampaignService
 from app.services.follow_up_service import FollowUpAutomation
+from app.workers.outreach_tasks import send_message as send_message_task
 
 router = APIRouter(prefix="/outreach", tags=["outreach"])
 
@@ -196,6 +197,31 @@ async def approve_message(
     await db.flush()
     await db.refresh(message)
     return MessageResponse.model_validate(message, from_attributes=True)
+
+
+@router.post("/messages/{message_id}/send", response_model=dict)
+async def send_outreach_message(
+    message_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Queue a message send via the outbound provider (Resend)."""
+    from app.models.lead import Lead
+
+    result = await db.execute(select(OutreachMessage).where(OutreachMessage.id == message_id))
+    message = result.scalar_one_or_none()
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    lead = (await db.execute(select(Lead).where(Lead.id == message.lead_id))).scalar_one_or_none()
+    if not lead or lead.team_id != current_user.team_id:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    if message.status not in ("approved", "scheduled"):
+        raise HTTPException(status_code=400, detail=f"Message not sendable (status={message.status})")
+
+    task = send_message_task.delay(str(message_id))
+    return {"task_id": task.id, "message_id": str(message_id)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

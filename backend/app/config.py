@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     SENDGRID_API_KEY: str = ""
     RESEND_API_KEY: str = ""
     SMARTLEAD_API_KEY: str = ""
+    OUTREACH_FROM_EMAIL: str = ""
+    OUTREACH_FROM_NAME: str = ""
+    OUTREACH_REPLY_TO: str = ""
+
+    RESEND_WEBHOOK_SECRET: str = ""
+    RESEND_WEBHOOK_TOLERANCE_SECONDS: int = 300
 
     # ── Scraping / Search ───────────────────────────────────────────────
     SERPAPI_KEY: str = ""

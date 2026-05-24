@@ -47,6 +47,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.outreach_tasks.process_follow_ups_all_teams",
         "schedule": crontab(minute="*/5"),  # every 5 minutes
     },
+    "process-campaigns": {
+        "task": "app.workers.outreach_tasks.process_due_campaign_enrollments_all_teams",
+        "schedule": crontab(minute="*/1"),  # every minute
+    },
 }
 
 # ── Auto-discover tasks from registered modules ────────────────────────────
