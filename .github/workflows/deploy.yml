@@ -118,8 +118,11 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd /opt/ai-outbound-os
-            docker compose pull
+            export BACKEND_IMAGE=ghcr.io/${{ env.BACKEND_IMAGE }}
+            export FRONTEND_IMAGE=ghcr.io/${{ env.FRONTEND_IMAGE }}
+            export IMAGE_TAG=${{ github.ref_name }}
+            docker compose --profile prod pull
             docker compose --profile prod up -d --remove-orphans
             sleep 5
-            curl -f http://localhost:8000/api/health || exit 1
+            curl -f http://localhost:8000/health || exit 1
             echo "Deployed ${{ github.ref_name }} successfully"
