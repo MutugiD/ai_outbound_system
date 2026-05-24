@@ -42,11 +42,20 @@ class EmailEventTracker:
         """Process a single email event.
 
         event_type: email.delivered, email.opened, email.clicked, email.bounced, email.complained
-        message_id: Resend message ID (stored as resend_id on OutreachMessage)
-        data: event payload from Resend webhook
+        message_id: Provider message ID (stored as resend_id on OutreachMessage)
+        data: event payload from webhook
         """
+        # Try to find message by provider message ID (stored in resend_id field)
         result = await self.db.execute(select(OutreachMessage).where(OutreachMessage.resend_id == message_id))
         message = result.scalar_one_or_none()
+
+        # Also try by UUID if the message_id looks like a UUID (custom X-Message-ID header)
+        if not message and "-" in message_id:
+            try:
+                msg_uuid = uuid.UUID(message_id)
+                message = await self.db.get(OutreachMessage, msg_uuid)
+            except (ValueError, AttributeError):
+                pass
 
         if not message:
             logger.warning("No message found for resend_id=%s", message_id)

@@ -15,6 +15,7 @@ from app.api.notifications import router as notifications_router
 from app.api.export import router as export_router
 from app.api.notes import router as notes_router
 from app.api.contacts import router as contacts_router
+from app.api.inbox import router as inbox_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -31,3 +32,4 @@ api_router.include_router(notifications_router)
 api_router.include_router(export_router)
 api_router.include_router(notes_router)
 api_router.include_router(contacts_router)
+api_router.include_router(inbox_router)

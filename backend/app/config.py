@@ -41,12 +41,25 @@ class Settings(BaseSettings):
     BUILTWITH_API_KEY: str = ""
 
     # ── Email providers ─────────────────────────────────────────────────
-    SENDGRID_API_KEY: str = ""
+    # ── Email Provider ──────────────────────────────────────────────────
+    EMAIL_PROVIDER: str = "brevo"  # "brevo" or "resend"
+    EMAIL_FROM_ADDRESS: str = "outreach@outbound-os.com"
+    EMAIL_FROM_NAME: str = "Outreach Team"
+    EMAIL_REPLY_TO: str = ""  # Reply-To address for inbound responses (must be a real inbox)
+    # Brevo (300 emails/day free)
+    BREVO_API_KEY: str = ""
+    BREVO_WEBHOOK_SECRET: str = ""
+    # Resend (100 emails/day free, requires domain verification)
     RESEND_API_KEY: str = ""
     RESEND_WEBHOOK_SECRET: str = ""
-    EMAIL_FROM_ADDRESS: str = "outreach@company.com"
-    EMAIL_FROM_NAME: str = "Outreach Team"
     SMARTLEAD_API_KEY: str = ""
+
+
+    # ── Gmail Inbox (IMAP polling for replies) ─────────────────────────
+    GMAIL_INBOX_EMAIL: str = ""
+    GMAIL_INBOX_APP_PASSWORD: str = ""
+    INBOX_POLL_INTERVAL_MINUTES: int = 2
+    AUTO_RESPOND_ENABLED: bool = False  # Start disabled for safety
 
     # ── Scraping / Search ───────────────────────────────────────────────
     SERPAPI_KEY: str = ""
