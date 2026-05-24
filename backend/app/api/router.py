@@ -14,6 +14,7 @@ from app.api.admin import router as admin_router
 from app.api.notifications import router as notifications_router
 from app.api.export import router as export_router
 from app.api.tasks import router as tasks_router
+from app.api.webhooks import router as webhooks_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -29,3 +30,4 @@ api_router.include_router(admin_router)
 api_router.include_router(notifications_router)
 api_router.include_router(export_router)
 api_router.include_router(tasks_router)
+api_router.include_router(webhooks_router)
