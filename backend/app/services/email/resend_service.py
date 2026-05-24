@@ -16,6 +16,17 @@ class ResendSendResult:
     provider_message_id: str
 
 
+@dataclass(frozen=True)
+class ResendReceivedEmail:
+    id: str
+    to: list[str]
+    from_email: str
+    subject: str | None
+    html: str | None
+    text: str | None
+    headers: dict
+
+
 def _format_from_header(from_email: str, from_name: str | None) -> str:
     if from_name and from_name.strip():
         return f"{from_name.strip()} <{from_email}>"
@@ -70,3 +81,28 @@ async def send_email(
         raise RuntimeError("Resend response missing id")
     return ResendSendResult(provider_message_id=str(provider_message_id))
 
+
+async def retrieve_received_email(*, email_id: str) -> ResendReceivedEmail:
+    """Retrieve a received (inbound) email via Resend's Receiving API."""
+    if not settings.RESEND_API_KEY:
+        raise ValueError("RESEND_API_KEY not configured")
+
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    url = f"https://api.resend.com/emails/receiving/{email_id}"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(url, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+
+    return ResendReceivedEmail(
+        id=str(data.get("id") or email_id),
+        to=list(data.get("to") or []),
+        from_email=str(data.get("from") or ""),
+        subject=data.get("subject"),
+        html=data.get("html"),
+        text=data.get("text"),
+        headers=dict(data.get("headers") or {}),
+    )

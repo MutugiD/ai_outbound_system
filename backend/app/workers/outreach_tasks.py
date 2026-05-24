@@ -28,6 +28,7 @@ def send_message(self, message_id: str, **kwargs):
     from app.models.contact import Contact
     from app.models.suppression import SuppressionList
     from app.models.message import OutreachMessage
+    from app.config import settings
     from app.services.activity_service import log_activity
     from app.services.email.resend_service import send_email
 
@@ -82,10 +83,18 @@ def send_message(self, message_id: str, **kwargs):
 
             subject = message.subject or "Quick question"
             try:
+                reply_to = None
+                if settings.OUTREACH_REPLY_TO:
+                    try:
+                        reply_to = settings.OUTREACH_REPLY_TO.format(message_id=str(message.id), lead_id=str(lead.id))
+                    except Exception:
+                        reply_to = settings.OUTREACH_REPLY_TO
+
                 result = await send_email(
                     to_email=to_email,
                     subject=subject,
                     text_body=message.body,
+                    reply_to=reply_to,
                 )
                 message.provider = "resend"
                 message.provider_message_id = result.provider_message_id
