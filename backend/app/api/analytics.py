@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user_from_token, PaginationParams, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.user import User
 from app.schemas.analytics import (
     OverviewStatsResponse,
@@ -31,22 +31,13 @@ from app.services.analytics_service import AnalyticsService
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Extract token from query param and resolve user."""
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
 # ── Overview ───────────────────────────────────────────────────────────────
 
 
 @router.get("/overview", response_model=OverviewStatsResponse)
 async def get_overview(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Top-line dashboard KPIs."""
     svc = AnalyticsService(db)
@@ -63,7 +54,7 @@ async def get_campaign_analytics(
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Per-campaign performance metrics — recharts-compatible."""
     svc = AnalyticsService(db)
@@ -82,7 +73,7 @@ async def get_campaign_analytics(
 @router.get("/sources", response_model=SourceAnalyticsResponse)
 async def get_source_analytics(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Lead source performance."""
     svc = AnalyticsService(db)
@@ -96,7 +87,7 @@ async def get_source_analytics(
 @router.get("/channels", response_model=ChannelAnalyticsResponse)
 async def get_channel_analytics(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Channel performance (email, linkedin, sms)."""
     svc = AnalyticsService(db)
@@ -110,7 +101,7 @@ async def get_channel_analytics(
 @router.get("/pipeline", response_model=PipelineAnalyticsResponse)
 async def get_pipeline_analytics(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Pipeline stage distribution with conversion rates."""
     svc = AnalyticsService(db)
@@ -127,7 +118,7 @@ async def get_pipeline_analytics(
 @router.get("/scores", response_model=ScoreDistributionResponse)
 async def get_score_distribution(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Lead score band distribution — recharts bar chart."""
     svc = AnalyticsService(db)
@@ -141,7 +132,7 @@ async def get_score_distribution(
 @router.get("/signals", response_model=SignalDistributionResponse)
 async def get_signal_distribution(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Buying signal category distribution — recharts pie/bar chart."""
     svc = AnalyticsService(db)

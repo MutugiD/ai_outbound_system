@@ -19,6 +19,10 @@ class OutreachMessage(SQLModel, table=True):
     subject: Optional[str] = Field(default=None)
     body: str = Field(sa_column_kwargs={"nullable": False})
     personalization_sources: list = Field(default=[], sa_column=Column(JSON))
+    provider: Optional[str] = Field(default=None, max_length=50)  # resend, sendgrid, smartlead
+    provider_message_id: Optional[str] = Field(default=None, max_length=255)
+    to_email: Optional[str] = Field(default=None, max_length=320)
+    error: Optional[str] = Field(default=None, max_length=2048)
     status: str = Field(default="draft", max_length=30)
     # draft, pending_approval, approved, scheduled, sent, delivered, opened, clicked, replied, bounced, failed
     approved_by: Optional[uuid.UUID] = Field(default=None, foreign_key="users.id")

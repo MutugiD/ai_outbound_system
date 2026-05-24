@@ -57,7 +57,7 @@ async def test_create_lead(client: AsyncClient, test_team, test_user, auth_token
             "contact_title": "VP Engineering",
         },
         # The leads API uses Query(alias="Authorization") for auth
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     # Accept 201 (created) or 200 depending on endpoint implementation
     assert resp.status_code in (200, 201), f"Got {resp.status_code}: {resp.text[:200]}"
@@ -76,7 +76,7 @@ async def test_list_leads_with_pagination(client: AsyncClient, test_team, db_ses
 
     resp = await client.get(
         "/api/v1/leads?page=1&per_page=2",
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:200]}"
     data = resp.json()
@@ -93,7 +93,7 @@ async def test_get_lead_detail(client: AsyncClient, test_team, db_session, auth_
 
     resp = await client.get(
         f"/api/v1/leads/{lead.id}",
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:200]}"
     data = resp.json()
@@ -111,7 +111,7 @@ async def test_update_lead(client: AsyncClient, test_team, db_session, auth_toke
     resp = await client.patch(
         f"/api/v1/leads/{lead.id}",
         json={"status": "enriching", "pipeline_stage": "enriched"},
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:200]}"
     data = resp.json()
@@ -128,7 +128,7 @@ async def test_delete_lead(client: AsyncClient, test_team, db_session, auth_toke
 
     resp = await client.delete(
         f"/api/v1/leads/{lead.id}",
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     # Accept 204 or 200 depending on implementation
     assert resp.status_code in (200, 204), f"Got {resp.status_code}: {resp.text[:200]}"
@@ -151,7 +151,7 @@ async def test_filter_leads_by_status(client: AsyncClient, test_team, db_session
 
     resp = await client.get(
         "/api/v1/leads?status=new",
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:200]}"
     data = resp.json()
@@ -171,7 +171,7 @@ async def test_filter_leads_by_score_band(client: AsyncClient, test_team, db_ses
 
     resp = await client.get(
         "/api/v1/leads?score_band=hot",
-        params={"Authorization": f"Bearer {auth_token}"},
+        headers={"Authorization": f"Bearer {auth_token}"},
     )
     assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:200]}"
     data = resp.json()

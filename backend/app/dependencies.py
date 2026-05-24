@@ -3,7 +3,7 @@
 import uuid
 from typing import Optional
 
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, Header, HTTPException, Query, status
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,17 +50,37 @@ def paginated_response(items: list, total: int, params: PaginationParams) -> dic
 # ── Auth helpers ──────────────────────────────────────────────────────────
 
 
+def _extract_bearer_token(authorization: Optional[str]) -> str:
+    """Extract a token from an HTTP Authorization header."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    value = authorization.strip()
+    if value.lower().startswith("bearer "):
+        token = value[7:].strip()
+    else:
+        token = value
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return token
+
+
 async def get_current_user(
-    token: str = Depends(...),  # placeholder; real extraction from header below
+    authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Extract and validate the current user from the Authorization header.
-
-    This is a convenience wrapper; the actual token extraction is done in the
-    routers via OAuth2PasswordBearer. This function is intended to be called
-    after the token string has been obtained.
-    """
-    raise NotImplementedError("Use get_current_user_from_token instead.")
+    """Validate and return the current user from the Authorization header."""
+    token = _extract_bearer_token(authorization)
+    return await get_current_user_from_token(token, db)
 
 
 async def get_current_user_from_token(token: str, db: AsyncSession) -> User:
@@ -70,6 +90,8 @@ async def get_current_user_from_token(token: str, db: AsyncSession) -> User:
         user_id: Optional[str] = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
@@ -80,7 +102,7 @@ async def get_current_user_from_token(token: str, db: AsyncSession) -> User:
     return user
 
 
-async def get_current_team(user: User = Depends(get_current_user)):  # noqa: F821
+async def get_current_team(user: User = Depends(get_current_user)):
     """Return the team context for the current user."""
     # In a team-scoped app the team is always derived from the user.
     return user.team_id
@@ -89,7 +111,7 @@ async def get_current_team(user: User = Depends(get_current_user)):  # noqa: F82
 def require_role(*roles: str):
     """Dependency factory that enforces the user has one of the given roles."""
 
-    async def _check(user: User = Depends(get_current_user)):  # noqa: F821
+    async def _check(user: User = Depends(get_current_user)):
         if user.role not in roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user

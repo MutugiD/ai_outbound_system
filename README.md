@@ -134,6 +134,24 @@ docker compose up -d
 docker compose --profile prod up -d
 ```
 
+## Versioning, Deployments, Rollback
+
+This repo uses **immutable image tags** for deployments.
+
+### Release deploy (recommended)
+- Create a SemVer tag like `v0.1.1` on `main` and push it:
+  - `git tag v0.1.1`
+  - `git push origin v0.1.1`
+- This triggers `.github/workflows/deploy.yml` to build/push and deploy images tagged `v0.1.1`.
+
+### Rollback
+- GitHub Actions → **Deploy** workflow → run manually and set:
+  - `image_tag` to a prior release tag (e.g. `v0.1.0`)
+  - `environment` as needed
+
+### Verify what’s running
+- Backend exposes `GET /version` which returns `app_version` and `git_sha`.
+
 ## License
 
 Proprietary — All rights reserved.

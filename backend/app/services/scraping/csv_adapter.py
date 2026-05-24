@@ -9,6 +9,7 @@ import os
 import csv
 import io
 import logging
+import tempfile
 from pathlib import Path
 from typing import Any, ClassVar, Optional, Union
 
@@ -167,7 +168,7 @@ class CSVAdapter(BaseLeadSourceAdapter):
                     os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "uploads")),
                 )
             ),
-            os.path.realpath(os.path.normpath(os.path.join(os.sep, "tmp"))),  # temp files in tests
+            os.path.realpath(tempfile.gettempdir()),  # temp files in tests (cross-platform)
         }
     )
 
@@ -175,7 +176,15 @@ class CSVAdapter(BaseLeadSourceAdapter):
         # Path-traversal prevention: resolve the candidate and ensure it is
         # contained by one of the canonical allowed root directories.
         resolved = os.path.realpath(path)
-        is_allowed = any(os.path.commonpath([resolved, safe_dir]) == safe_dir for safe_dir in self._SAFE_DIRS)
+
+        def _is_allowed_dir(safe_dir: str) -> bool:
+            try:
+                return os.path.commonpath([resolved, safe_dir]) == safe_dir
+            except ValueError:
+                # On Windows, commonpath throws when drives differ.
+                return False
+
+        is_allowed = any(_is_allowed_dir(safe_dir) for safe_dir in self._SAFE_DIRS)
         if not is_allowed:
             raise ValueError(f"Path outside allowed directories: {resolved!r}")
         with open(resolved, newline="", encoding=encoding) as fh:

@@ -16,8 +16,10 @@ class EmailAccount(SQLModel, table=True):
     user_id: uuid.UUID = Field(foreign_key="users.id")
     provider: str = Field(max_length=50)  # gmail, outlook, sendgrid, resend
     email_address: str = Field(max_length=320)
-    access_token_encrypted: str = Field(max_length=4096)
-    refresh_token_encrypted: Optional[str] = Field(default=None, max_length=4096)
+    access_token_ciphertext: str = Field(max_length=4096)
+    access_token_key_id: str = Field(default="v1", max_length=50)
+    refresh_token_ciphertext: Optional[str] = Field(default=None, max_length=4096)
+    refresh_token_key_id: Optional[str] = Field(default="v1", max_length=50)
     provider_metadata: dict = Field(default={}, sa_column=Column(JSON))
 
     is_sending_account: bool = Field(default=False)
@@ -27,4 +29,5 @@ class EmailAccount(SQLModel, table=True):
     last_reset_at: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="active", max_length=20)  # active, disconnected, rate_limited
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    rotated_at: Optional[datetime] = Field(default=None)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

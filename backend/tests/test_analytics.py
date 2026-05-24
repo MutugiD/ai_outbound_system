@@ -112,7 +112,7 @@ async def test_overview_stats_structure(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/overview",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200, f"Got {resp.status_code}: {resp.text[:300]}"
     data = resp.json()
@@ -144,7 +144,7 @@ async def test_overview_stats_with_leads(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/overview",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -170,7 +170,7 @@ async def test_campaign_analytics(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/campaigns",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -196,7 +196,7 @@ async def test_source_analytics(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/sources",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -221,7 +221,7 @@ async def test_channel_analytics(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/channels",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -240,7 +240,7 @@ async def test_pipeline_analytics_with_stages(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/pipeline",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -260,7 +260,7 @@ async def test_score_distribution(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/scores",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -288,7 +288,7 @@ async def test_signal_distribution(client, db_session):
 
     resp = await client.get(
         "/api/v1/analytics/signals",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -305,7 +305,7 @@ async def test_admin_list_users(client, db_session):
 
     resp = await client.get(
         "/api/v1/admin/users",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -322,7 +322,7 @@ async def test_admin_update_user(client, db_session):
     resp = await client.patch(
         f"/api/v1/admin/users/{admin_user.id}",
         json={"role": "manager"},
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -352,7 +352,7 @@ async def test_admin_delete_user(client, db_session):
 
     resp = await client.delete(
         f"/api/v1/admin/users/{second_user.id}",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 204
 
@@ -370,7 +370,7 @@ async def test_admin_api_key_crud(client, db_session):
             "key_encrypted": "sk-test-key-12345678",
             "name": "OpenAI Key",
         },
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 201, f"Got {resp.status_code}: {resp.text[:300]}"
     key_data = resp.json()
@@ -380,7 +380,7 @@ async def test_admin_api_key_crud(client, db_session):
     # List
     resp = await client.get(
         "/api/v1/admin/api-keys",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -389,7 +389,7 @@ async def test_admin_api_key_crud(client, db_session):
     # Delete
     resp = await client.delete(
         f"/api/v1/admin/api-keys/{key_id}",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 204
 
@@ -418,7 +418,7 @@ async def test_notification_crud(client, db_session):
     # List
     resp = await client.get(
         "/api/v1/notifications",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -427,7 +427,7 @@ async def test_notification_crud(client, db_session):
     # Unread count
     resp = await client.get(
         "/api/v1/notifications/unread-count",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     count_data = resp.json()
@@ -454,7 +454,7 @@ async def test_notification_mark_read(client, db_session):
     # Mark read
     resp = await client.patch(
         f"/api/v1/notifications/{n.id}/read",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["is_read"] is True
@@ -462,7 +462,7 @@ async def test_notification_mark_read(client, db_session):
     # Unread count should be 0 or decreased
     resp = await client.get(
         "/api/v1/notifications/unread-count",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
 
@@ -482,7 +482,7 @@ async def test_unread_notification_count(client, db_session):
 
     resp = await client.get(
         "/api/v1/notifications/unread-count",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["unread_count"] >= 3
@@ -501,7 +501,7 @@ async def test_export_csv_format(client, db_session):
 
     resp = await client.get(
         "/api/v1/export/leads/csv",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert "text/csv" in resp.headers.get("content-type", "")
@@ -527,7 +527,7 @@ async def test_export_json_structure(client, db_session):
 
     resp = await client.get(
         "/api/v1/export/leads/json",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -553,7 +553,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Overview
     resp = await client.get(
         "/api/v1/analytics/overview",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     data = resp.json()
@@ -564,7 +564,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Campaigns
     resp = await client.get(
         "/api/v1/analytics/campaigns",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["campaigns"] == []
@@ -572,7 +572,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Sources
     resp = await client.get(
         "/api/v1/analytics/sources",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["sources"] == []
@@ -580,7 +580,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Channels
     resp = await client.get(
         "/api/v1/analytics/channels",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["channels"] == []
@@ -588,7 +588,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Pipeline
     resp = await client.get(
         "/api/v1/analytics/pipeline",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     pipeline = resp.json()
@@ -598,7 +598,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Scores
     resp = await client.get(
         "/api/v1/analytics/scores",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["distribution"] == []
@@ -606,7 +606,7 @@ async def test_analytics_with_empty_data(client, db_session):
     # Signals
     resp = await client.get(
         "/api/v1/analytics/signals",
-        params={"Authorization": f"Bearer {token}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
     assert resp.json()["signals"] == []

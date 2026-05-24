@@ -4,10 +4,27 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.database import init_db
 from app.api.router import api_router
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+        # Only set HSTS when the request is already HTTPS (assumes TLS termination upstream).
+        if request.url.scheme == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+
+        return response
 
 
 @asynccontextmanager
@@ -24,6 +41,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -38,3 +57,13 @@ app.include_router(api_router)
 @app.get("/health", tags=["health"])
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/version", tags=["health"])
+async def version():
+    """Return build/deploy version information (for rollout + rollback verification)."""
+    return {
+        "version": settings.VERSION,
+        "app_version": settings.APP_VERSION or settings.VERSION,
+        "git_sha": settings.GIT_SHA,
+    }
