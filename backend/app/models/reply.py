@@ -15,12 +15,19 @@ class Reply(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     lead_id: uuid.UUID = Field(foreign_key="leads.id")
     message_id: Optional[uuid.UUID] = Field(default=None, foreign_key="outreach_messages.id")
+    provider: Optional[str] = Field(default=None, max_length=50)  # resend, sendgrid, etc.
+    provider_inbound_id: Optional[str] = Field(default=None, max_length=255)
     channel: str = Field(max_length=20)
     subject: Optional[str] = Field(default=None)
     body: str = Field(sa_column_kwargs={"nullable": False})
     from_email: Optional[str] = Field(default=None, max_length=320)
     from_name: Optional[str] = Field(default=None, max_length=255)
     received_at: datetime = Field(default_factory=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_replies_lead", "lead_id"),
+        Index("idx_replies_provider_inbound", "provider_inbound_id"),
+    )
 
 
 class ReplyClassification(SQLModel, table=True):

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import PaginationParams, get_current_user_from_token, paginated_response
+from app.dependencies import PaginationParams, get_current_user, paginated_response
 from app.models.user import User
 from app.schemas.outreach import (
     CampaignCreate,
@@ -27,14 +27,6 @@ from app.services.campaign_service import CampaignService
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
 
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
-
-
 # ── List campaigns ────────────────────────────────────────────────────────
 
 
@@ -44,7 +36,7 @@ async def list_campaigns(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List all campaigns for the current team."""
     svc = CampaignService(db)
@@ -69,7 +61,7 @@ async def list_campaigns(
 async def create_campaign(
     body: CampaignCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new campaign with optional steps."""
     svc = CampaignService(db)
@@ -105,7 +97,7 @@ async def create_campaign(
 async def get_campaign(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get a campaign by ID, including its steps."""
     svc = CampaignService(db)
@@ -129,7 +121,7 @@ async def update_campaign(
     campaign_id: uuid.UUID,
     body: CampaignUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Update campaign fields."""
     svc = CampaignService(db)
@@ -152,7 +144,7 @@ async def update_campaign(
 async def delete_campaign(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Archive a campaign."""
     svc = CampaignService(db)
@@ -169,7 +161,7 @@ async def add_campaign_step(
     campaign_id: uuid.UUID,
     body: CampaignStepCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Add a step to a campaign."""
     svc = CampaignService(db)
@@ -194,7 +186,7 @@ async def add_campaign_step(
 async def list_campaign_steps(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List all steps for a campaign."""
     svc = CampaignService(db)
@@ -212,7 +204,7 @@ async def update_campaign_step(
     step_id: uuid.UUID,
     body: CampaignStepUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Update a campaign step."""
     svc = CampaignService(db)
@@ -232,7 +224,7 @@ async def delete_campaign_step(
     campaign_id: uuid.UUID,
     step_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a campaign step."""
     svc = CampaignService(db)
@@ -253,7 +245,7 @@ async def enroll_leads(
     campaign_id: uuid.UUID,
     body: EnrollLeadsRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Enroll leads into a campaign."""
     svc = CampaignService(db)
@@ -276,7 +268,7 @@ async def list_enrollments(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List enrollments for a campaign."""
     svc = CampaignService(db)
@@ -305,7 +297,7 @@ async def list_enrollments(
 async def start_campaign(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Start (activate) a campaign."""
     svc = CampaignService(db)
@@ -322,7 +314,7 @@ async def start_campaign(
 async def pause_campaign(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Pause an active campaign."""
     svc = CampaignService(db)
@@ -336,7 +328,7 @@ async def pause_campaign(
 async def complete_campaign(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Mark a campaign as completed."""
     svc = CampaignService(db)
@@ -353,7 +345,7 @@ async def complete_campaign(
 async def get_campaign_stats(
     campaign_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get analytics/statistics for a campaign."""
     svc = CampaignService(db)

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 # ── User CRUD ──────────────────────────────────────────────────────────────
@@ -50,7 +50,11 @@ class APIKeyCreateRequest(BaseModel):
     """Create API key payload."""
 
     provider: str = Field(..., max_length=100, description="Wakili-Mkononi — provider name (e.g. openai, sendgrid)")
-    key_encrypted: str = Field(..., description="Encrypted API key value")
+    key: str = Field(
+        ...,
+        validation_alias=AliasChoices("key", "key_encrypted"),
+        description="API key value (plaintext; encrypted-at-rest server-side)",
+    )
     name: Optional[str] = None
 
 

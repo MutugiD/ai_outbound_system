@@ -9,20 +9,11 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user_from_token
+from app.dependencies import get_current_user
 from app.models.user import User
 from app.services.export_service import ExportService
 
 router = APIRouter(prefix="/export", tags=["export"])
-
-
-async def _get_current_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Extract token from query param and resolve user."""
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    return await get_current_user_from_token(token, db)
 
 
 # ── Export Leads CSV ───────────────────────────────────────────────────────
@@ -36,7 +27,7 @@ async def export_leads_csv(
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Download leads as CSV file with proper content-disposition header."""
     svc = ExportService(db)
@@ -73,7 +64,7 @@ async def export_leads_json(
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Download leads as JSON."""
     svc = ExportService(db)

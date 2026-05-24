@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user_from_token, PaginationParams, paginated_response
+from app.dependencies import PaginationParams, paginated_response, require_role
 from app.models.user import User
 from app.schemas.admin import (
     UserUpdateRequest,
@@ -25,18 +25,6 @@ from app.services.admin_service import AdminService
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-async def _get_admin_user(
-    authorization: str = Query(..., alias="Authorization"),
-    db: AsyncSession = Depends(get_db),
-):
-    """Extract token and verify admin role."""
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    user = await get_current_user_from_token(token, db)
-    if user.role not in ("admin", "manager"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-    return user
-
-
 # ── User Management ────────────────────────────────────────────────────────
 
 
@@ -45,7 +33,7 @@ async def list_users(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_admin_user),
+    current_user: User = Depends(require_role("admin", "manager")),
 ):
     """List team users (paginated). Admin-only."""
     svc = AdminService(db)
@@ -64,7 +52,7 @@ async def update_user(
     user_id: uuid.UUID,
     body: UserUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_admin_user),
+    current_user: User = Depends(require_role("admin", "manager")),
 ):
     """Update user role and/or active status. Admin-only."""
     svc = AdminService(db)
@@ -79,7 +67,7 @@ async def update_user(
 async def delete_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_admin_user),
+    current_user: User = Depends(require_role("admin", "manager")),
 ):
     """Deactivate a user (soft delete). Admin-only."""
     svc = AdminService(db)
@@ -96,7 +84,7 @@ async def list_api_keys(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_admin_user),
+    current_user: User = Depends(require_role("admin", "manager")),
 ):
     """List team API keys. Admin-only."""
     svc = AdminService(db)
@@ -104,8 +92,7 @@ async def list_api_keys(
 
     items = []
     for k in keys:
-        # Mask the key hash to show last 4 chars
-        last4 = k.key_hash[-4:] if k.key_hash and len(k.key_hash) >= 4 else "****"
+        last4 = k.last4 if getattr(k, "last4", None) else "****"
         items.append(
             APIKeyResponse(
                 id=k.id,
@@ -128,7 +115,7 @@ async def list_api_keys(
 async def create_api_key(
     body: APIKeyCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_admin_user),
+    current_user: User = Depends(require_role("admin", "manager")),
 ):
     """Create a new API key. Admin-only."""
     svc = AdminService(db)
@@ -136,10 +123,10 @@ async def create_api_key(
         team_id=current_user.team_id,
         user_id=current_user.id,
         provider=body.provider,
-        key_encrypted=body.key_encrypted,
+        key_plaintext=body.key,
         name=body.name,
     )
-    last4 = key.key_hash[-4:] if key.key_hash and len(key.key_hash) >= 4 else "****"
+    last4 = key.last4 if getattr(key, "last4", None) else "****"
     return APIKeyResponse(
         id=key.id,
         team_id=key.team_id,
@@ -156,7 +143,7 @@ async def create_api_key(
 async def delete_api_key(
     key_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(_get_admin_user),
+    current_user: User = Depends(require_role("admin", "manager")),
 ):
     """Delete an API key. Admin-only."""
     svc = AdminService(db)

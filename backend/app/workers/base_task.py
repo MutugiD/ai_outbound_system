@@ -87,6 +87,11 @@ class BaseTask(Task):
     def __call__(self, *args, **kwargs):
         """Entry-point that wraps the actual task body with job tracking."""
         job_id = kwargs.pop("job_id", None)
+        if isinstance(job_id, str):
+            try:
+                job_id = uuid.UUID(job_id)
+            except Exception:
+                job_id = None
 
         if job_id:
             self._update_job_status(job_id, "running")

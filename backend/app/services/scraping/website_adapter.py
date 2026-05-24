@@ -14,7 +14,7 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from app.services.scraping.base_adapter import BaseLeadSourceAdapter, NormalizedLead, RawLead
-from app.security_utils import sanitize_log
+from app.security_utils import build_safe_url, sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -108,10 +108,10 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
         if not domain:
             raise ValueError("WebsiteAdapter requires 'domain' in query")
 
-        # Normalize domain to base URL
+        # Normalize and validate base URL (SSRF prevention)
         if not domain.startswith("http"):
             domain = f"https://{domain}"
-        base_url = domain.rstrip("/")
+        base_url = str(build_safe_url(domain.rstrip("/")))
 
         paths = query.get("paths", self.paths)
         max_pages = query.get("max_pages", self.max_pages)
@@ -126,7 +126,7 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
             await self._rate_limiter.acquire(parsed_domain)
 
             try:
-                resp = await client.get(url, follow_redirects=True)
+                resp = await self._safe_get(client, url)
                 if resp.status_code != 200:
                     logger.debug("WebsiteAdapter: %s returned %d", sanitize_log(url), resp.status_code)
                     continue
@@ -209,9 +209,31 @@ class WebsiteAdapter(BaseLeadSourceAdapter):
                     "Accept-Language": "en-US,en;q=0.5",
                 },
                 timeout=self.timeout,
-                follow_redirects=True,
+                follow_redirects=False,
             )
         return self._client
+
+    async def _safe_get(self, client: httpx.AsyncClient, url: str, max_redirects: int = 5) -> httpx.Response:
+        """Fetch a URL with SSRF validation applied to each redirect hop."""
+        current = url
+        last_resp: Optional[httpx.Response] = None
+
+        for _ in range(max_redirects + 1):
+            safe_url = build_safe_url(current)
+            resp = await client.get(safe_url)
+            last_resp = resp
+
+            if resp.status_code in (301, 302, 303, 307, 308):
+                loc = resp.headers.get("location")
+                if not loc:
+                    return resp
+                current = urljoin(str(safe_url), loc)
+                continue
+
+            return resp
+
+        # Too many redirects; return the last response for caller handling.
+        return last_resp if last_resp is not None else await client.get(build_safe_url(url))
 
     def _extract_text(self, html: str) -> str:
         """Extract clean article text from HTML using trafilatura (fallback: regex)."""

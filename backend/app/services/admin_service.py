@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.api_key import APIKey
+from app.config import settings
+from app.crypto import encrypt_secret, keyed_hash_secret
 
 
 class AdminService:
@@ -84,14 +86,20 @@ class AdminService:
         team_id: uuid.UUID,
         user_id: uuid.UUID,
         provider: str,
-        key_encrypted: str,
+        key_plaintext: str,
         name: Optional[str] = None,
     ) -> APIKey:
         """Create a new API key for the team."""
+        key_hash = keyed_hash_secret(key_plaintext)
+        ciphertext = encrypt_secret(key_plaintext)
+        last4 = key_plaintext[-4:] if key_plaintext and len(key_plaintext) >= 4 else ""
         key = APIKey(
             team_id=team_id,
             user_id=user_id,
-            key_hash=key_encrypted,
+            key_hash=key_hash,
+            ciphertext=ciphertext,
+            key_id=settings.ENCRYPTION_KEY_ID,
+            last4=last4,
             name=name or f"{provider} key",
             permissions=["read"],
         )

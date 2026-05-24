@@ -55,6 +55,14 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.scraping_tasks.run_daily_lead_discovery",
         "schedule": crontab(hour=6, minute=0),
     },
+    "process-follow-ups": {
+        "task": "app.workers.outreach_tasks.process_follow_ups_all_teams",
+        "schedule": crontab(minute="*/5"),  # every 5 minutes
+    },
+    "process-campaigns": {
+        "task": "app.workers.outreach_tasks.process_due_campaign_enrollments_all_teams",
+        "schedule": crontab(minute="*/1"),  # every minute
+    },
 }
 
 # ── Auto-discover tasks from registered modules ────────────────────────────

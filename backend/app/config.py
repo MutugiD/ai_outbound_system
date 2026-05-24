@@ -3,6 +3,7 @@
 from functools import lru_cache
 from typing import List
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 
@@ -11,12 +12,17 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "AI Outbound OS"
     VERSION: str = "0.1.0"
+    APP_VERSION: str = ""
+    GIT_SHA: str = ""
     APP_ENV: str = "development"
     DEBUG: bool = False
 
     # ── Database ────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql+asyncpg://outbound:outbound@localhost:5432/outbound_os"
-    DATABASE_URL_SYNC: str = "postgresql+psycopg2://outbound:outbound@localhost:5432/outbound_os"
+    DATABASE_URL_SYNC: str = Field(
+        default="postgresql+psycopg2://outbound:outbound@localhost:5432/outbound_os",
+        validation_alias=AliasChoices("DATABASE_URL_SYNC", "SYNC_DATABASE_URL"),
+    )
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
 
@@ -53,6 +59,12 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_WEBHOOK_SECRET: str = ""
     SMARTLEAD_API_KEY: str = ""
+    OUTREACH_FROM_EMAIL: str = ""
+    OUTREACH_FROM_NAME: str = ""
+    OUTREACH_REPLY_TO: str = ""
+
+    RESEND_WEBHOOK_SECRET: str = ""
+    RESEND_WEBHOOK_TOLERANCE_SECONDS: int = 300
 
 
     # ── Gmail Inbox (IMAP polling for replies) ─────────────────────────
@@ -86,6 +98,7 @@ class Settings(BaseSettings):
 
     # ── Encryption ──────────────────────────────────────────────────────
     ENCRYPTION_KEY: str = "change-me-32-bytes-encryption-key!"
+    ENCRYPTION_KEY_ID: str = "v1"
 
     model_config = {
         "env_file": ".env",

@@ -21,6 +21,10 @@ on:
         options:
           - production
           - staging
+      image_tag:
+        description: "Image tag to deploy (e.g. v1.2.3). For rollback, pick an older tag."
+        required: true
+        default: "v0.1.0"
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -37,6 +41,7 @@ jobs:
   # ----------------------------------------------------------
   ci:
     name: CI Check
+    if: github.ref_type == 'tag'
     uses: ./.github/workflows/ci.yml
 
   # ----------------------------------------------------------
@@ -46,6 +51,7 @@ jobs:
     name: Build & Push Images
     runs-on: ubuntu-latest
     needs: ci
+    if: github.ref_type == 'tag'
     permissions:
       contents: read
       packages: write
@@ -82,6 +88,9 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ github.ref_name }}
+          build-args: |
+            APP_VERSION=${{ github.ref_name }}
+            GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -94,6 +103,8 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.ref_name }}
           build-args: |
             VITE_API_URL=/api
+            VITE_APP_VERSION=${{ github.ref_name }}
+            VITE_GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -118,8 +129,36 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             cd /opt/ai-outbound-os
-            docker compose pull
+            export BACKEND_IMAGE=ghcr.io/${{ env.BACKEND_IMAGE }}
+            export FRONTEND_IMAGE=ghcr.io/${{ env.FRONTEND_IMAGE }}
+            export IMAGE_TAG=${{ github.ref_name }}
+            docker compose --profile prod pull
             docker compose --profile prod up -d --remove-orphans
             sleep 5
-            curl -f http://localhost:8000/api/health || exit 1
+            curl -f http://localhost:8000/health || exit 1
             echo "Deployed ${{ github.ref_name }} successfully"
+
+  deploy-existing:
+    name: Deploy existing tag (${{ inputs.image_tag }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: ${{ inputs.environment || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/ai-outbound-os
+            export BACKEND_IMAGE=ghcr.io/${{ env.BACKEND_IMAGE }}
+            export FRONTEND_IMAGE=ghcr.io/${{ env.FRONTEND_IMAGE }}
+            export IMAGE_TAG=${{ inputs.image_tag }}
+            docker compose --profile prod pull
+            docker compose --profile prod up -d --remove-orphans
+            sleep 5
+            curl -f http://localhost:8000/health || exit 1
+            echo "Deployed ${{ inputs.image_tag }} successfully"
