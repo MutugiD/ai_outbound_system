@@ -9,7 +9,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, security-review-for-backend-frontend]
   pull_request:
     branches: [main]
 
