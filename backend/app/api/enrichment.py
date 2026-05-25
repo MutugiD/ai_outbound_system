@@ -67,7 +67,7 @@ async def detect_signals(
     method : str
         Detection method: 'rule', 'llm', or 'both' (default).
     model : str | None
-        LLM model to use (default: gpt-4o-mini).
+        LLM model to use (default: configured LLM_MODEL).
     """
     result = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.team_id == current_user.team_id))
     lead = result.scalar_one_or_none()

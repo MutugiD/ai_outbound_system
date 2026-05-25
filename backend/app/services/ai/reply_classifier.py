@@ -38,6 +38,7 @@ from app.models.company import Company
 from app.models.message import OutreachMessage
 from app.models.reply import Reply, ReplyClassification
 from app.models.campaign import CampaignEnrollment
+from app.config import settings
 from app.services.ai.llm_service import LLMService
 from app.services.activity_service import log_activity
 
@@ -260,7 +261,7 @@ class ReplyClassifier:
         result = await self._llm.call(
             prompt=prompt,
             schema=ReplyClassificationOutput,
-            model="gpt-4o-mini",
+            model=settings.LLM_MODEL,
             task_name="reply_classification",
             system_prompt=system_prompt,
             temperature=0.1,
@@ -415,7 +416,7 @@ class ReplyClassifier:
             summary=result.summary,
             recommended_action=result.recommended_action,
             draft_response=result.draft_response,
-            model_used=model or "gpt-4o-mini",
+            model_used=model or settings.LLM_MODEL,
         )
         db.add(classification)
         await db.flush()

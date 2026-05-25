@@ -29,6 +29,7 @@ from app.models.audit import WebsiteAudit
 from app.models.enrichment import EnrichmentRecord
 from app.models.campaign import Campaign, CampaignStep
 from app.models.message import OutreachMessage
+from app.config import settings
 from app.services.ai.llm_service import LLMService
 from app.services.activity_service import log_activity
 
@@ -399,7 +400,7 @@ class PersonalizationEngine:
             result = await self._llm.call(
                 prompt=prompt,
                 schema=PersonalizationOutput,
-                model=model or "gpt-4o",
+                model=model or settings.LLM_MODEL,
                 task_name="personalization",
                 system_prompt=system_prompt,
                 temperature=0.8,
