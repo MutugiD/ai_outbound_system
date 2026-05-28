@@ -84,6 +84,10 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
 
+    # ── Evolution API (WhatsApp) ───────────────────────────────────────
+    EVOLUTION_API_URL: str = "http://localhost:8080"
+    EVOLUTION_API_KEY: str = ""
+
     # ── Object Storage (MinIO local — NO AWS needed) ───────────────────
     # Uses MinIO in docker-compose, NOT AWS S3.
     # For production, you CAN use S3-compatible services (AWS, GCS, etc.)
