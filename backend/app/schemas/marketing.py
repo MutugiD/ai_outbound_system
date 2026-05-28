@@ -17,6 +17,7 @@ class MarketingSettingsUpdate(BaseModel):
 
 class BrandBrainDeriveRequest(BaseModel):
     website_url: str
+    additional_context: Optional[str] = None  # Extra info about the product from user input
     store: bool = True
 
 

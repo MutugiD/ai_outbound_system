@@ -23,6 +23,7 @@ from app.models.signal import BuyingSignal
 from app.models.audit import WebsiteAudit
 from app.models.lead_source import LeadSource
 from app.models.research import AIResearchReport
+from app.config import settings
 from app.services.ai.llm_service import LLMService
 from app.services.activity_service import log_activity
 
@@ -202,7 +203,7 @@ class ResearchAgent:
         brief: ResearchBriefSchema = await llm.call(
             prompt=prompt,
             schema=ResearchBriefSchema,
-            model=model or "gpt-4o",
+            model=model or settings.LLM_MODEL,
             task_name="research_brief",
             system_prompt=SYSTEM_PROMPT,
             temperature=0.2,
@@ -210,7 +211,7 @@ class ResearchAgent:
         )
 
         # Get model info from LLM usage metadata
-        model_used = getattr(brief, "_llm_usage", {}).get("model", model or "gpt-4o")
+        model_used = getattr(brief, "_llm_usage", {}).get("model", model or settings.LLM_MODEL)
 
         # ── i. Store AIResearchReport ─────────────────────────────────────
         report = AIResearchReport(
@@ -344,7 +345,7 @@ class ResearchAgent:
         brief: ResearchBriefSchema = await llm.call(
             prompt=prompt,
             schema=ResearchBriefSchema,
-            model=model or "gpt-4o",
+            model=model or settings.LLM_MODEL,
             task_name="research_brief_context",
             system_prompt=SYSTEM_PROMPT,
             temperature=0.2,

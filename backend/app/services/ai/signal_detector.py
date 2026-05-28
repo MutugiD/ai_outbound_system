@@ -24,6 +24,7 @@ from app.models.company import Company
 from app.models.contact import Contact
 from app.models.signal import BuyingSignal
 from app.models.lead_source import LeadSource
+from app.config import settings
 from app.services.ai.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -282,7 +283,7 @@ class SignalDetector:
             result = await llm.call(
                 prompt=prompt,
                 schema=_SignalDetectionOutput,
-                model=model or "gpt-4o-mini",
+                model=model or settings.LLM_MODEL,
                 task_name="signal_detection",
                 system_prompt=(
                     "You are a buying signal detection expert. "
@@ -332,7 +333,7 @@ class SignalDetector:
         method : str
             Detection method: 'rule', 'llm', or 'both'.
         model : str | None
-            LLM model to use (defaults to gpt-4o-mini).
+            LLM model to use (defaults to configured LLM_MODEL).
 
         Returns
         -------

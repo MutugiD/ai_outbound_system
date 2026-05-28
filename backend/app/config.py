@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # ── LLM ─────────────────────────────────────────────────────────────
+    LLM_PROVIDER: str = "ollama"  # "ollama", "openai", "anthropic"
+    LLM_BASE_URL: str = "http://localhost:11434/v1"  # Ollama default; use https://api.openai.com/v1 for OpenAI
+    LLM_MODEL: str = "glm-5.1:cloud"  # Default model; e.g. "glm-5.1:cloud", "qwen3:8b", "llama3.1:8b", "gpt-4o-mini"
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
 
