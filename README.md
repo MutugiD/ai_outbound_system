@@ -33,6 +33,7 @@ cd frontend && npm run build  # type-check + build
 | API Docs | http://localhost:8000/docs |
 | Frontend | http://localhost:5173 |
 | MinIO Console | http://localhost:9001 |
+| Evolution API (WhatsApp) | http://localhost:8080 |
 
 ## Architecture
 
@@ -52,6 +53,11 @@ cd frontend && npm run build  # type-check + build
 │  │ Website/  │ │ Dedup    │ │ Scoring/Signals  │   │
 │  │ LinkedIn  │ │ Enrich   │ │ Website Audit    │   │
 │  └──────────┘ └──────────┘ └──────────────────┘   │
+│                                                      │
+│  ┌──────────────────────────────────────────────┐   │
+│  │ Channel Service (WhatsApp via Evolution API)  │   │
+│  │ Outbound send, inbound webhooks, sessions    │   │
+│  └──────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────┤
 │  Infrastructure: PostgreSQL + pgvector, Redis,      │
 │  MinIO (S3-compatible, no AWS needed), Celery       │
@@ -62,6 +68,7 @@ cd frontend && npm run build  # type-check + build
 
 - **Lead Intelligence** — CSV import, Reddit scraping, website crawling, LinkedIn sourcing. Normalization, deduplication, enrichment (Apollo, Hunter, BuiltWith), buying signal detection (20 categories), lead scoring (8 dimensions), website audit
 - **Campaign Engine** — Multi-channel outreach (email, LinkedIn, phone, WhatsApp), personalization strategies (5 types × 4 tones), message templates, response classification, follow-up automation
+- **WhatsApp Channel** — Outbound/inbound WhatsApp messaging via Evolution API (Baileys). Session management (QR code pairing), webhook-based inbound replies, delivery receipts. No official Business API required.
 - **Auth & Security** — JWT auth with email verification, CSRF protection, security headers, rate limiting
 - **Dashboard** — KPI metrics, pipeline overview with progress bars, trend charts, activity feed
 
@@ -77,7 +84,8 @@ ai_outbound_system/
 │   │   ├── services/      # Business logic
 │   │   │   ├── scraping/  # Source adapters (CSV, Reddit, Website, LinkedIn)
 │   │   │   ├── leads/     # Pipeline: normalize, dedup, enrich, score, signals
-│   │   │   └── campaigns/ # Campaign engine, personalization, outreach
+│   │   │   ├── campaigns/ # Campaign engine, personalization, outreach
+│   │   │   └── whatsapp/ # Evolution API client, session management
 │   │   └── schemas/       # Pydantic models
 │   ├── tests/             # 91 unit tests + e2e pipeline tests
 │   ├── alembic/            # Database migrations
@@ -120,6 +128,8 @@ Copy `backend/.env.example` to `backend/.env` and fill in values. Key variables:
 | `SECRET_KEY` | JWT signing key |
 | `S3_ENDPOINT_URL` | MinIO endpoint (default: `http://localhost:9000`) |
 | `OPENAI_API_KEY` | OpenAI API key for LLM features |
+| `EVOLUTION_API_URL` | Evolution API URL (default: `http://localhost:8080`) |
+| `EVOLUTION_API_KEY` | Evolution API authentication key |
 
 ## Docker
 
@@ -127,8 +137,8 @@ Copy `backend/.env.example` to `backend/.env` and fill in values. Key variables:
 # Development (infrastructure only)
 docker compose up -d db redis minio
 
-# Full stack
-docker compose up -d
+# Full stack (including WhatsApp)
+docker compose up -d db redis minio evolution-api
 
 # Production (with Nginx frontend)
 docker compose --profile prod up -d
