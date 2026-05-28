@@ -101,6 +101,7 @@ class LLMService:
         if self._anthropic_client is None:
             try:
                 import anthropic
+
                 self._anthropic_client = anthropic.AsyncAnthropic(
                     api_key=settings.ANTHROPIC_API_KEY,
                 )
@@ -176,7 +177,9 @@ class LLMService:
                 except ValidationError as exc:
                     logger.warning(
                         "Validation error on model %s attempt %d: %s",
-                        current_model, attempt, exc,
+                        current_model,
+                        attempt,
+                        exc,
                     )
                     last_error = exc
                     if attempt < 2:  # retry with schema correction
@@ -212,9 +215,7 @@ class LLMService:
                 model, prompt, schema, schema_str, system_prompt, temperature, max_tokens
             )
         elif model.startswith("claude"):
-            return await self._call_anthropic(
-                model, prompt, schema, schema_str, system_prompt, temperature, max_tokens
-            )
+            return await self._call_anthropic(model, prompt, schema, schema_str, system_prompt, temperature, max_tokens)
         else:
             raise ValueError(f"Unsupported model: {model}")
 
@@ -273,7 +274,9 @@ class LLMService:
                 response = await client.chat.completions.create(**kwargs)
                 content = response.choices[0].message.content
             if not content:
-                raise ValueError(f"Empty response from model {model} (finish_reason={response.choices[0].finish_reason})")
+                raise ValueError(
+                    f"Empty response from model {model} (finish_reason={response.choices[0].finish_reason})"
+                )
 
         # Strip markdown code blocks if present (common with local models)
         content = content.strip()
@@ -281,7 +284,7 @@ class LLMService:
             # Remove opening ```json or ``` and closing ```
             first_line_end = content.find("\n")
             if first_line_end != -1:
-                content = content[first_line_end + 1:]
+                content = content[first_line_end + 1 :]
             if content.endswith("```"):
                 content = content[:-3]
             content = content.strip()
@@ -399,7 +402,8 @@ class LLMService:
 
         logger.info(
             "LLM cost: task=%s model=%s input=%d output=%d cost=$%.6f",
-            task_name, model,
+            task_name,
+            model,
             usage.get("prompt_tokens", 0),
             usage.get("completion_tokens", 0),
             total_cost,

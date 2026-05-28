@@ -18,24 +18,15 @@ logger = logging.getLogger(__name__)
 
 class PositioningOutput(BaseModel):
     """Structured output for LLM-generated positioning."""
-    value_proposition: str = Field(
-        description="Clear 1-sentence value prop: who it's for, the pain, and the outcome"
-    )
-    ideal_customer_profile: str = Field(
-        description="Detailed ICP: role, company size, industry, pain points, goals"
-    )
-    tone_guidelines: list[str] = Field(
-        description="5-7 specific tone/voice rules tailored to this product's audience"
-    )
-    differentiators: list[str] = Field(
-        description="3-5 key differentiators from competitors"
-    )
+
+    value_proposition: str = Field(description="Clear 1-sentence value prop: who it's for, the pain, and the outcome")
+    ideal_customer_profile: str = Field(description="Detailed ICP: role, company size, industry, pain points, goals")
+    tone_guidelines: list[str] = Field(description="5-7 specific tone/voice rules tailored to this product's audience")
+    differentiators: list[str] = Field(description="3-5 key differentiators from competitors")
     product_category: str = Field(
         description="Category label (e.g., 'project management', 'email marketing', 'dev tools')"
     )
-    tagline_suggestions: list[str] = Field(
-        description="3-5 short tagline options"
-    )
+    tagline_suggestions: list[str] = Field(description="3-5 short tagline options")
 
 
 class EnhancedBrandBrain:
@@ -93,10 +84,10 @@ class EnhancedBrandBrain:
 {product_summary}
 
 ## Extracted Keywords
-{', '.join(keywords[:15]) if keywords else 'No keywords extracted'}
+{", ".join(keywords[:15]) if keywords else "No keywords extracted"}
 
 ## Additional Context
-{additional_context or 'None provided'}
+{additional_context or "None provided"}
 
 Create a precise marketing profile with:
 1. A compelling value proposition that clarifies who it's for, what pain it solves, and what outcome they get

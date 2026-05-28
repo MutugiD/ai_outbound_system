@@ -73,8 +73,10 @@ PLATFORM_GUIDELINES = {
 
 # ── LLM output schemas ──────────────────────────────────────────────────────
 
+
 class PostVariant(BaseModel):
     """A single generated post variant."""
+
     hook: str = Field(description="Opening line that grabs attention")
     body: str = Field(description="Main content of the post")
     cta: str = Field(description="Call to action or engagement prompt at the end")
@@ -84,10 +86,12 @@ class PostVariant(BaseModel):
 
 class PostGenerationOutput(BaseModel):
     """Structured output for post generation."""
+
     variants: list[PostVariant] = Field(description="2-3 variant posts")
 
 
 # ── Post Generator ──────────────────────────────────────────────────────────
+
 
 class MarketingPostGenerator:
     """Generate platform-specific social posts from Brand Brain context.
@@ -159,21 +163,21 @@ class MarketingPostGenerator:
 {goal}
 
 ## Brand Voice Rules
-{chr(10).join(f'- {rule}' for rule in voice_rules) if voice_rules else '- Write like a human founder, not corporate marketing'}
+{chr(10).join(f"- {rule}" for rule in voice_rules) if voice_rules else "- Write like a human founder, not corporate marketing"}
 
 ## Platform-Specific Guidelines ({platform.upper()})
-- Maximum length: {guidelines['max_length']} characters
-- Tone: {guidelines['tone']}
-- Structure: {guidelines['structure']}
+- Maximum length: {guidelines["max_length"]} characters
+- Tone: {guidelines["tone"]}
+- Structure: {guidelines["structure"]}
 
 ## Audience Context
-{audience_context or 'General audience interested in ' + ', '.join(keywords[:5]) if keywords else 'General audience'}
+{audience_context or "General audience interested in " + ", ".join(keywords[:5]) if keywords else "General audience"}
 
 ## Tips for {platform.upper()}
-{chr(10).join(f'- {tip}' for tip in guidelines['format_tips'])}
+{chr(10).join(f"- {tip}" for tip in guidelines["format_tips"])}
 
 ## Keywords to naturally include
-{', '.join(keywords[:10]) if keywords else 'Use product-specific terms'}
+{", ".join(keywords[:10]) if keywords else "Use product-specific terms"}
 
 Generate {variants} distinct variants. Each should feel different — vary the hook angle, 
 tone intensity, and approach. Make them sound like a real founder wrote them, not a marketing team.
@@ -200,16 +204,18 @@ Never use generic phrases like 'revolutionary', 'game-changer', 'leverage', or '
 
             posts = []
             for i, variant in enumerate(result.variants[:variants]):
-                posts.append({
-                    "hook": variant.hook,
-                    "body": variant.body,
-                    "cta": variant.cta,
-                    "full_text": variant.full_text,
-                    "reasoning": variant.reasoning,
-                    "platform": platform,
-                    "variant_index": i,
-                    "model_used": model,
-                })
+                posts.append(
+                    {
+                        "hook": variant.hook,
+                        "body": variant.body,
+                        "cta": variant.cta,
+                        "full_text": variant.full_text,
+                        "reasoning": variant.reasoning,
+                        "platform": platform,
+                        "variant_index": i,
+                        "model_used": model,
+                    }
+                )
 
             return posts
 
@@ -236,7 +242,7 @@ Never use generic phrases like 'revolutionary', 'game-changer', 'leverage', or '
             {
                 "hook": f"I've been building {product} and here's what I learned",
                 "body": f"The biggest challenge for {icp} isn't what you'd expect. "
-                        f"{audience_context or 'After talking to dozens of users, the pattern is clear.'}",
+                f"{audience_context or 'After talking to dozens of users, the pattern is clear.'}",
                 "cta": "What's your experience with this? I'd love to hear what's worked for you.",
                 "platform": platform,
                 "reasoning": "Template fallback — leads with personal experience, asks for input.",
@@ -244,7 +250,7 @@ Never use generic phrases like 'revolutionary', 'game-changer', 'leverage', or '
             {
                 "hook": f"Unpopular opinion: most {product} alternatives are solving the wrong problem",
                 "body": f"Here's what {icp} actually need: {goal.lower()}. "
-                        f"The tools that exist focus on features, not outcomes.",
+                f"The tools that exist focus on features, not outcomes.",
                 "cta": "Has anyone found something that actually works for this?",
                 "platform": platform,
                 "reasoning": "Template fallback — leads with a contrarian take, invites discussion.",
@@ -252,7 +258,7 @@ Never use generic phrases like 'revolutionary', 'game-changer', 'leverage', or '
             {
                 "hook": f"Built something for {icp} — looking for early testers",
                 "body": f"We're solving {goal.lower()}. "
-                        f"{audience_context or 'The current options all miss the mark in similar ways.'}",
+                f"{audience_context or 'The current options all miss the mark in similar ways.'}",
                 "cta": "If this resonates, I'd love to hear what you're currently using and what's missing.",
                 "platform": platform,
                 "reasoning": "Template fallback — direct ask, positions as early-stage and learning.",
@@ -265,13 +271,15 @@ Never use generic phrases like 'revolutionary', 'game-changer', 'leverage', or '
             full_text = f"{template['hook']}\n\n{template['body']}\n\n{template['cta']}"
             # Truncate to platform max length
             if len(full_text) > guidelines["max_length"]:
-                full_text = full_text[:guidelines["max_length"] - 3] + "..."
+                full_text = full_text[: guidelines["max_length"] - 3] + "..."
 
-            posts.append({
-                **template,
-                "full_text": full_text,
-                "variant_index": i,
-                "model_used": "template_v1",
-            })
+            posts.append(
+                {
+                    **template,
+                    "full_text": full_text,
+                    "variant_index": i,
+                    "model_used": "template_v1",
+                }
+            )
 
         return posts
