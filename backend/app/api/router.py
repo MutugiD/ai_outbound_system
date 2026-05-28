@@ -19,6 +19,8 @@ from app.api.inbox import router as inbox_router
 from app.api.tasks import router as tasks_router
 from app.api.webhooks import router as webhooks_router
 from app.api.marketing import router as marketing_router
+from app.api.whatsapp_sessions import router as whatsapp_router
+from app.api.whatsapp_webhook import router as whatsapp_webhook_router
 from services.acquisition_service.router import router as acquisition_router
 
 api_router = APIRouter(prefix="/api/v1")
@@ -41,3 +43,5 @@ api_router.include_router(tasks_router)
 api_router.include_router(webhooks_router)
 api_router.include_router(marketing_router)
 api_router.include_router(acquisition_router)
+api_router.include_router(whatsapp_router)
+api_router.include_router(whatsapp_webhook_router)

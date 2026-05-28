@@ -26,6 +26,7 @@ from app.models.integration import Integration
 from app.models.api_key import APIKey
 from app.models.notification import Notification
 from app.models.marketing import AudienceScanJob, AudienceSignal, MarketingUsageDaily, SocialPostDraft
+from app.models.whatsapp_session import WhatsAppSession
 from services.acquisition_service.models import (
     AcquisitionJob,
     GoogleMapsLocationTarget,
@@ -66,6 +67,7 @@ __all__ = [
     "AudienceSignal",
     "MarketingUsageDaily",
     "SocialPostDraft",
+    "WhatsAppSession",
     "GoogleMapsSource",
     "GoogleMapsLocationTarget",
     "GoogleMapsRawProfile",
