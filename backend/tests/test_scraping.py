@@ -148,6 +148,15 @@ def test_normalizer_normalizes_phones():
     )
     result = normalizer.normalize(raw)
     assert result.phone is not None
+
+    # Kenya local number should still use the KE default region
+    raw = RawLead(
+        source_type="csv_import",
+        company_name="Test",
+        raw_data={"phone": "0722123456"},
+    )
+    result = normalizer.normalize(raw)
+    assert result.phone == "+254722123456"
     assert result.phone.startswith("+1") or result.phone.startswith("+")
 
     # Number with formatting that parses as valid US

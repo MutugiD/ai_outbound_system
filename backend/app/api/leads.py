@@ -1,27 +1,20 @@
 """Leads router: CRUD, import, filtering, pagination, and scraping endpoints."""
 
-import io
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import PaginationParams, get_current_user, paginated_response
-from app.models.lead import Lead
-from app.models.company import Company
-from app.models.contact import Contact
-from app.models.lead_source import LeadSource
-from app.models.activity import ActivityLog
 from app.schemas.lead import (
     LeadCreate,
-    LeadUpdate,
-    LeadResponse,
     LeadListResponse,
+    LeadResponse,
+    LeadUpdate,
 )
-from app.schemas.pipeline import PipelineTransitionRequest, PipelineTransitionResponse, PipelineTransitionDetailResponse
+from app.schemas.pipeline import PipelineTransitionDetailResponse, PipelineTransitionRequest
 from app.models.pipeline import PipelineTransition
 from app.models.note import LeadNote
 from app.services.lead_service import LeadService
@@ -29,10 +22,9 @@ from app.services.scraping.csv_adapter import CSVAdapter
 from app.services.scraping.reddit_adapter import RedditAdapter
 from app.services.scraping.linkedin_adapter import LinkedInJobsAdapter
 from app.services.scraping.website_adapter import WebsiteAdapter
-from app.services.scraping.normalizer import LeadNormalizer
-from app.services.scraping.deduplicator import LeadDeduplicator
-from app.services.scraping.base_adapter import RawLead, NormalizedLead
+from app.services.scraping.base_adapter import RawLead
 from app.rate_limit import rate_limit
+from services.crm_service.ingestion import ingest_raw_leads
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -42,7 +34,6 @@ _csv_adapter = CSVAdapter()
 _reddit_adapter = RedditAdapter()
 _linkedin_adapter = LinkedInJobsAdapter()
 _website_adapter = WebsiteAdapter()
-_normalizer = LeadNormalizer()
 
 
 # ── List leads ────────────────────────────────────────────────────────────
@@ -236,73 +227,8 @@ async def _ingest_leads(
     user_id: uuid.UUID,
     db: AsyncSession,
 ) -> dict:
-    """Common pipeline: normalize → deduplicate → persist a batch of raw leads.
-
-    Returns a summary dict with counts.
-    """
-    dedup = LeadDeduplicator(db)
-    created = 0
-    merged = 0
-    skipped = 0
-    errors = 0
-    sources_created = 0
-
-    for raw in raw_leads:
-        try:
-            normalized = _normalizer.normalize(raw)
-
-            # Validate
-            if (
-                not normalized.company_name
-                and not normalized.company_domain
-                and not normalized.email
-                and not normalized.linkedin_url
-            ):
-                skipped += 1
-                continue
-
-            # Deduplicate and persist
-            lead = await dedup.merge_or_create(normalized, team_id, user_id)
-            if lead:
-                # Create lead_source record
-                source = LeadSource(
-                    lead_id=lead.id,
-                    source_type=raw.source_type,
-                    source_url=raw.source_url,
-                    source_name=raw.raw_data.get("title") or raw.raw_data.get("subreddit") or raw.source_type,
-                    raw_text=raw.raw_text[:4000] if raw.raw_text else None,
-                    detected_signal_text=",".join(raw.raw_data.get("buying_signals", []))
-                    if raw.raw_data.get("buying_signals")
-                    else None,
-                )
-                db.add(source)
-                sources_created += 1
-
-                # Check if this was a merge
-                existing_check = await dedup.check_duplicate(normalized, team_id)
-                if existing_check.is_duplicate:
-                    merged += 1
-                else:
-                    created += 1
-            else:
-                errors += 1
-
-        except Exception as exc:
-            errors += 1
-            import logging
-
-            logging.getLogger(__name__).warning("Error ingesting lead: %s", exc)
-            continue
-
-    await db.flush()
-    return {
-        "total": len(raw_leads),
-        "created": created,
-        "merged": merged,
-        "skipped": skipped,
-        "errors": errors,
-        "sources_created": sources_created,
-    }
+    """Common pipeline: normalize → deduplicate → persist a batch of raw leads."""
+    return await ingest_raw_leads(raw_leads=raw_leads, team_id=team_id, user_id=user_id, db=db)
 
 
 # ── Import CSV ─────────────────────────────────────────────────────────────

@@ -65,3 +65,4 @@ docker-compose.override.yml
 test-reports/
 coverage/
 .nyc_output/
+.codex-logs/

@@ -22,6 +22,9 @@ class Contact(SQLModel, table=True):
     email: Optional[str] = Field(default=None, max_length=320)
     email_status: str = Field(default="unverified", max_length=20)  # unverified, verified, invalid, risky
     phone: Optional[str] = Field(default=None, max_length=50)
+    raw_phone: Optional[str] = Field(default=None, max_length=50)
+    normalized_phone: Optional[str] = Field(default=None, max_length=50)
+    whatsapp_phone: Optional[str] = Field(default=None, max_length=50)
     phone_status: str = Field(default="unverified", max_length=20)
     linkedin_url: Optional[str] = Field(default=None, max_length=1024)
     location: Optional[str] = Field(default=None, max_length=500)
@@ -31,5 +34,6 @@ class Contact(SQLModel, table=True):
     __table_args__ = (
         Index("idx_contacts_company", "company_id"),
         Index("idx_contacts_email", "email"),
+        Index("idx_contacts_normalized_phone", "normalized_phone"),
         Index("idx_contacts_linkedin", "linkedin_url"),
     )

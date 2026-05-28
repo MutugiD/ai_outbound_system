@@ -26,6 +26,12 @@ from app.models.integration import Integration
 from app.models.api_key import APIKey
 from app.models.notification import Notification
 from app.models.marketing import AudienceScanJob, AudienceSignal, MarketingUsageDaily, SocialPostDraft
+from services.acquisition_service.models import (
+    AcquisitionJob,
+    GoogleMapsLocationTarget,
+    GoogleMapsRawProfile,
+    GoogleMapsSource,
+)
 
 __all__ = [
     "Team",
@@ -60,4 +66,8 @@ __all__ = [
     "AudienceSignal",
     "MarketingUsageDaily",
     "SocialPostDraft",
+    "GoogleMapsSource",
+    "GoogleMapsLocationTarget",
+    "GoogleMapsRawProfile",
+    "AcquisitionJob",
 ]

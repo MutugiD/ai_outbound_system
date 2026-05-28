@@ -20,6 +20,9 @@ class RawLead(BaseModel):
 
     source_type: str  # csv_import, reddit, linkedin_jobs, website, etc.
     source_url: Optional[str] = None
+    source_query: Optional[str] = None
+    source_location: Optional[str] = None
+    provider_record_id: Optional[str] = None
     raw_text: Optional[str] = None
     raw_data: dict[str, Any] = Field(default_factory=dict)
     company_name: Optional[str] = None
@@ -38,9 +41,14 @@ class NormalizedLead(BaseModel):
     contact_title: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
+    raw_phone: Optional[str] = None
+    normalized_phone: Optional[str] = None
     linkedin_url: Optional[str] = None
     source: str = "manual"
     source_url: Optional[str] = None
+    source_query: Optional[str] = None
+    source_location: Optional[str] = None
+    provider_record_id: Optional[str] = None
     raw_text: Optional[str] = None
     country: Optional[str] = None
     industry: Optional[str] = None
@@ -111,7 +119,7 @@ class BaseLeadSourceAdapter(ABC):
         """Return True if *lead* has enough information to be persisted.
 
         Minimum requirement: at least one of (company_name, company_domain,
-        email, linkedin_url) must be populated.
+        email, linkedin_url, phone) must be populated.
         """
 
     # ── Convenience runner ───────────────────────────────────────────────

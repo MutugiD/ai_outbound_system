@@ -144,13 +144,17 @@ class LeadService:
 
         # Optionally create contact
         contact_id = data.contact_id
-        if data.contact_email and not contact_id:
+        if (data.contact_email or data.contact_phone or data.contact_normalized_phone) and not contact_id:
             contact = Contact(
                 company_id=company_id,
                 first_name=data.contact_first_name,
                 last_name=data.contact_last_name,
                 email=data.contact_email,
                 title=data.contact_title,
+                phone=data.contact_phone or data.contact_normalized_phone,
+                raw_phone=data.contact_raw_phone,
+                normalized_phone=data.contact_normalized_phone,
+                whatsapp_phone=data.contact_whatsapp_phone or data.contact_normalized_phone,
                 linkedin_url=data.contact_linkedin_url,
                 full_name=f"{data.contact_first_name or ''} {data.contact_last_name or ''}".strip() or None,
             )

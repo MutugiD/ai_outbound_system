@@ -1,0 +1,2 @@
+"""Acquisition service package."""
+

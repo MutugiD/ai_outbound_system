@@ -26,6 +26,10 @@ class LeadCreate(BaseModel):
     contact_first_name: Optional[str] = None
     contact_last_name: Optional[str] = None
     contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_raw_phone: Optional[str] = None
+    contact_normalized_phone: Optional[str] = None
+    contact_whatsapp_phone: Optional[str] = None
     contact_title: Optional[str] = None
     contact_linkedin_url: Optional[str] = None
 
