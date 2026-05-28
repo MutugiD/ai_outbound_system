@@ -67,10 +67,16 @@ class LeadNormalizer:
         if not email and raw.raw_text:
             email = self._extract_email(raw.raw_text)
 
-        # Normalize phone
-        phone = self._clean_str(data.get("phone"))
-        if phone:
-            phone = self._normalize_phone(phone)
+        # Normalize phone with region-aware defaults
+        raw_phone = self._clean_str(data.get("phone"))
+        normalized_phone = None
+        if raw_phone:
+            normalized_phone = self._normalize_phone(
+                raw_phone,
+                default_region=self._default_region(
+                    data.get("country_code") or data.get("country"),
+                ),
+            )
 
         # Normalize LinkedIn URL
         linkedin_url = self._normalize_linkedin_url(data.get("linkedin_url") or raw.url or data.get("linkedin"))
@@ -84,10 +90,15 @@ class LeadNormalizer:
             contact_name=contact_name,
             contact_title=contact_title,
             email=email,
-            phone=phone,
+            phone=normalized_phone,
+            raw_phone=raw_phone,
+            normalized_phone=normalized_phone,
             linkedin_url=linkedin_url,
             source=source,
             source_url=raw.source_url,
+            source_query=raw.source_query,
+            source_location=raw.source_location,
+            provider_record_id=raw.provider_record_id,
             raw_text=raw.raw_text,
             country=self._clean_str(data.get("country")),
             industry=self._clean_str(data.get("industry")),
@@ -149,7 +160,7 @@ class LeadNormalizer:
     # ── Phone normalization (E.164) ───────────────────────────────────────
 
     @staticmethod
-    def _normalize_phone(phone: str, default_region: str = "US") -> Optional[str]:
+    def _normalize_phone(phone: str, default_region: str = "KE") -> Optional[str]:
         try:
             parsed = phonenumbers.parse(phone, default_region)
             if phonenumbers.is_valid_number(parsed):
@@ -211,10 +222,32 @@ class LeadNormalizer:
             "reddit": "reddit",
             "linkedin_jobs": "linkedin_jobs",
             "website": "website",
+            "google_maps": "google_maps",
             "manual": "manual",
             "apollo": "apollo",
         }
         return mapping.get(source_type, source_type)
+
+    @staticmethod
+    def _default_region(country_value: Optional[str]) -> str:
+        if not country_value:
+            return "KE"
+
+        normalized = country_value.strip().upper()
+        known_aliases = {
+            "KENYA": "KE",
+            "KE": "KE",
+            "UGANDA": "UG",
+            "UG": "UG",
+            "TANZANIA": "TZ",
+            "TZ": "TZ",
+            "RWANDA": "RW",
+            "RW": "RW",
+            "UNITED STATES": "US",
+            "USA": "US",
+            "US": "US",
+        }
+        return known_aliases.get(normalized, normalized[:2])
 
     # ── Utility ──────────────────────────────────────────────────────────
 

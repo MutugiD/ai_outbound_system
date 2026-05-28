@@ -1,7 +1,7 @@
 """Lead deduplication service — checks for existing leads using primary and
 secondary key matching before persisting new records.
 
-Primary keys (exact match): email, company_domain, linkedin_url
+Primary keys (exact match): normalized phone, email, company_domain, linkedin_url
 Secondary keys (fuzzy match): company_name + location, contact_name + company_name
 """
 
@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lead import Lead
@@ -77,7 +77,30 @@ class LeadDeduplicator:
     # ── Primary key checks ────────────────────────────────────────────────
 
     async def _check_primary_keys(self, lead: NormalizedLead, team_id: uuid.UUID) -> DeduplicationResult:
-        """Check exact matches on email, company_domain, and linkedin_url."""
+        """Check exact matches on phone, email, company_domain, and linkedin_url."""
+
+        normalized_phone = lead.normalized_phone or lead.phone
+        if normalized_phone:
+            stmt = select(Contact).where(
+                or_(
+                    Contact.normalized_phone == normalized_phone,
+                    Contact.phone == normalized_phone,
+                    Contact.whatsapp_phone == normalized_phone,
+                )
+            )
+            result = await self.db.execute(stmt)
+            contact = result.scalar_one_or_none()
+            if contact:
+                lead_stmt = select(Lead).where(Lead.contact_id == contact.id, Lead.team_id == team_id)
+                lead_result = await self.db.execute(lead_stmt)
+                existing = lead_result.scalar_one_or_none()
+                if existing:
+                    return DeduplicationResult(
+                        is_duplicate=True,
+                        matched_lead_id=existing.id,
+                        match_reason="phone_exact",
+                        confidence=1.0,
+                    )
 
         # Email match — check contacts
         if lead.email:
@@ -224,7 +247,7 @@ class LeadDeduplicator:
                     company.domain = lead.company_domain
                 self.db.add(company)
 
-        if existing.contact_id and (lead.contact_name or lead.email):
+        if existing.contact_id and (lead.contact_name or lead.email or lead.phone):
             contact_stmt = select(Contact).where(Contact.id == existing.contact_id)
             contact_result = await self.db.execute(contact_stmt)
             contact = contact_result.scalar_one_or_none()
@@ -233,6 +256,12 @@ class LeadDeduplicator:
                     contact.email = lead.email
                 if not contact.phone and lead.phone:
                     contact.phone = lead.phone
+                if not contact.raw_phone and lead.raw_phone:
+                    contact.raw_phone = lead.raw_phone
+                if not contact.normalized_phone and lead.normalized_phone:
+                    contact.normalized_phone = lead.normalized_phone
+                if not contact.whatsapp_phone and lead.normalized_phone:
+                    contact.whatsapp_phone = lead.normalized_phone
                 if not contact.linkedin_url and lead.linkedin_url:
                     contact.linkedin_url = lead.linkedin_url
                 if not contact.title and lead.contact_title:
@@ -264,7 +293,7 @@ class LeadDeduplicator:
 
         # Create contact
         contact = None
-        if lead.contact_name or lead.email:
+        if lead.contact_name or lead.email or lead.phone:
             # Parse contact name
             name_parts = (lead.contact_name or "").split(None, 1)
             first_name = name_parts[0] if name_parts else None
@@ -278,6 +307,9 @@ class LeadDeduplicator:
                 email=lead.email,
                 title=lead.contact_title,
                 phone=lead.phone,
+                raw_phone=lead.raw_phone,
+                normalized_phone=lead.normalized_phone,
+                whatsapp_phone=lead.normalized_phone,
                 linkedin_url=lead.linkedin_url,
             )
             self.db.add(contact)

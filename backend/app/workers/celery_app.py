@@ -29,6 +29,10 @@ celery_app.conf.task_routes = {
     "app.workers.outreach_tasks.*": {"queue": "outreach"},
     "app.workers.inbox_tasks.*": {"queue": "inbox"},
     "app.workers.marketing_tasks.*": {"queue": "marketing"},
+    "services.acquisition_service.tasks.*": {"queue": "acquisition"},
+    "services.intelligence_service.tasks.*": {"queue": "intelligence"},
+    "services.campaign_service.tasks.*": {"queue": "campaign"},
+    "services.channel_service.tasks.*": {"queue": "channel"},
 }
 
 # ── Default queue for uncategorized tasks ──────────────────────────────────
@@ -63,5 +67,9 @@ celery_app.autodiscover_tasks(
         "app.workers.outreach_tasks",
         "app.workers.inbox_tasks",
         "app.workers.marketing_tasks",
+        "services.acquisition_service.tasks",
+        "services.intelligence_service.tasks",
+        "services.campaign_service.tasks",
+        "services.channel_service.tasks",
     ]
 )

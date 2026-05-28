@@ -1,0 +1,11 @@
+"""Campaign service router."""
+
+from fastapi import APIRouter
+
+from app.api.campaigns import router as campaigns_router
+from app.api.tasks import router as tasks_router
+
+router = APIRouter(prefix="/api/v1")
+router.include_router(campaigns_router)
+router.include_router(tasks_router)
+

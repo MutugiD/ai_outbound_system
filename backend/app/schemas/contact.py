@@ -20,6 +20,9 @@ class ContactUpdate(BaseModel):
     email: Optional[str] = Field(default=None, max_length=320)
     email_status: Optional[str] = Field(default=None, max_length=20)
     phone: Optional[str] = Field(default=None, max_length=50)
+    raw_phone: Optional[str] = Field(default=None, max_length=50)
+    normalized_phone: Optional[str] = Field(default=None, max_length=50)
+    whatsapp_phone: Optional[str] = Field(default=None, max_length=50)
     phone_status: Optional[str] = Field(default=None, max_length=20)
     linkedin_url: Optional[str] = Field(default=None, max_length=1024)
     location: Optional[str] = Field(default=None, max_length=500)
@@ -41,6 +44,9 @@ class ContactResponse(BaseModel):
     email: Optional[str] = None
     email_status: str
     phone: Optional[str] = None
+    raw_phone: Optional[str] = None
+    normalized_phone: Optional[str] = None
+    whatsapp_phone: Optional[str] = None
     phone_status: str
     linkedin_url: Optional[str] = None
     location: Optional[str] = None
