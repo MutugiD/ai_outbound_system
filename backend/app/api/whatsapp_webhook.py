@@ -65,9 +65,7 @@ async def evolution_webhook(
     # ── Connection state updates ────────────────────────────────────
     if event == "connection.update":
         state = payload.get("state", "")
-        session_result = await db.execute(
-            select(WhatsAppSession).where(WhatsAppSession.instance_name == instance_name)
-        )
+        session_result = await db.execute(select(WhatsAppSession).where(WhatsAppSession.instance_name == instance_name))
         session = session_result.scalar_one_or_none()
         if session:
             state_map = {
@@ -88,9 +86,7 @@ async def evolution_webhook(
     # ── QR code ready ───────────────────────────────────────────────
     if event == "qrcode.updated":
         qr_code = payload.get("qrcode", "")
-        session_result = await db.execute(
-            select(WhatsAppSession).where(WhatsAppSession.instance_name == instance_name)
-        )
+        session_result = await db.execute(select(WhatsAppSession).where(WhatsAppSession.instance_name == instance_name))
         session = session_result.scalar_one_or_none()
         if session:
             session.qr_code = qr_code
@@ -131,27 +127,21 @@ async def evolution_webhook(
             return {"status": "ignored", "reason": "missing_phone_or_text"}
 
         # Find contact by whatsapp_phone
-        contact_result = await db.execute(
-            select(Contact).where(Contact.whatsapp_phone == sender_phone)
-        )
+        contact_result = await db.execute(select(Contact).where(Contact.whatsapp_phone == sender_phone))
         contact = contact_result.scalar_one_or_none()
 
         # Find lead associated with this contact (via company -> lead or direct)
         lead_id = None
         message_id = None
         if contact and contact.company_id:
-            lead_result = await db.execute(
-                select(Lead).where(Lead.company_id == contact.company_id)
-            )
+            lead_result = await db.execute(select(Lead).where(Lead.company_id == contact.company_id))
             lead = lead_result.scalar_one_or_none()
             if lead:
                 lead_id = lead.id
 
         if not lead_id:
             # Try matching via the phone on the lead directly
-            lead_result = await db.execute(
-                select(Lead).where(Lead.normalized_phone == sender_phone)
-            )
+            lead_result = await db.execute(select(Lead).where(Lead.normalized_phone == sender_phone))
             lead = lead_result.scalar_one_or_none()
             if lead:
                 lead_id = lead.id
@@ -196,6 +186,7 @@ async def evolution_webhook(
         # Enqueue classification task
         try:
             from app.workers.inbox_tasks import process_new_reply
+
             process_new_reply.delay(str(reply.id))
         except Exception as e:
             logger.warning("Failed to enqueue reply classification: %s", e)

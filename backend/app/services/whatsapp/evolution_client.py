@@ -104,7 +104,9 @@ class EvolutionClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def send_media(self, instance_name: str, number: str, media_type: str, media_url: str, caption: str = "") -> dict:
+    async def send_media(
+        self, instance_name: str, number: str, media_type: str, media_url: str, caption: str = ""
+    ) -> dict:
         """Send a media message (image, document, audio, video)."""
         client = await self._get_client()
         endpoint_map = {

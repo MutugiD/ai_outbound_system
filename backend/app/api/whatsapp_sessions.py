@@ -22,6 +22,7 @@ router = APIRouter(prefix="/channel/whatsapp", tags=["whatsapp"])
 
 # ── Schemas ─────────────────────────────────────────────────────────────────
 
+
 class SessionCreate(BaseModel):
     instance_name: str
 
@@ -54,6 +55,7 @@ class SendTextResponse(BaseModel):
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
+
 def _session_response(session: WhatsAppSession) -> dict:
     return {
         "id": str(session.id),
@@ -82,6 +84,7 @@ async def _get_connected_session(
 
 
 # ── Session Endpoints ───────────────────────────────────────────────────────
+
 
 @router.get("/health")
 async def whatsapp_health():
@@ -255,6 +258,7 @@ async def delete_session(
 
 
 # ── Messaging Endpoints ──────────────────────────────────────────────────────
+
 
 @router.post("/send", response_model=SendTextResponse)
 async def send_whatsapp_message(
