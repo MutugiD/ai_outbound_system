@@ -161,14 +161,34 @@ class LeadNormalizer:
 
     @staticmethod
     def _normalize_phone(phone: str, default_region: str = "KE") -> Optional[str]:
+        cleaned_phone = phone.strip()
         try:
-            parsed = phonenumbers.parse(phone, default_region)
+            parsed = phonenumbers.parse(cleaned_phone, default_region)
             if phonenumbers.is_valid_number(parsed):
                 return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
         except phonenumbers.NumberParseException:
             pass
+
+        digits_only = re.sub(r"\D", "", cleaned_phone)
+        # Heuristic fallback: if a phone number looks like a US/NANP local number
+        # and no explicit country hint was provided, prefer a valid +1 normalization
+        # over returning bare digits. This preserves legacy CSV-import behavior while
+        # still letting Kenya-style local numbers resolve via the default KE region.
+        if (
+            default_region == "KE"
+            and len(digits_only) == 10
+            and not cleaned_phone.startswith("+")
+            and not digits_only.startswith("0")
+        ):
+            try:
+                parsed = phonenumbers.parse(digits_only, "US")
+                if phonenumbers.is_valid_number(parsed):
+                    return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+            except phonenumbers.NumberParseException:
+                pass
+
         # Fallback: just return cleaned digits if 10+ chars
-        digits = re.sub(r"[^\d+]", "", phone)
+        digits = re.sub(r"[^\d+]", "", cleaned_phone)
         return digits if len(digits) >= 10 else None
 
     # ── LinkedIn URL normalization ────────────────────────────────────────
