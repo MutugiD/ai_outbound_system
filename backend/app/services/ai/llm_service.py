@@ -1,18 +1,17 @@
 """LLM service layer — structured output generation with model routing, retries, and cost tracking.
 
 Supports:
-  - OpenAI (primary): GPT-4o for complex tasks, GPT-4o-mini for bulk classification
+  - Ollama (default): Local/self-hosted models via OpenAI-compatible API
+  - OpenAI: GPT-4o, GPT-4o-mini for complex tasks
   - Anthropic (fallback): Claude models when OpenAI is unavailable
   - Structured JSON output validated against Pydantic schemas
   - Retry on validation failure with schema correction
-  - Cost tracking per task per day
+  - Cost tracking per task per day (cloud providers only)
 """
 
 import json
 import logging
-import uuid
-from datetime import datetime, date
-from decimal import Decimal
+from datetime import date
 from typing import Any, Optional, Type
 
 from pydantic import BaseModel, ValidationError
@@ -21,7 +20,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# ── Cost per 1K tokens (approximate, in USD) ─────────────────────────────────
+# ── Cost per 1K tokens (approximate, in USD) — cloud providers only ──────────
 
 MODEL_COSTS: dict[str, dict[str, float]] = {
     "gpt-4o": {"input": 0.0025, "output": 0.01},
@@ -29,42 +28,72 @@ MODEL_COSTS: dict[str, dict[str, float]] = {
     "gpt-4-turbo": {"input": 0.01, "output": 0.03},
     "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
     "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
+    # Ollama models are free (local inference)
 }
-
-DEFAULT_MODEL = "gpt-4o-mini"
-COMPLEX_TASK_MODEL = "gpt-4o"
-
-FALLBACK_MODELS = {
-    "gpt-4o": ["gpt-4o-mini", "claude-3-5-sonnet-20241022"],
-    "gpt-4o-mini": ["gpt-4o", "claude-3-5-sonnet-20241022"],
-    "gpt-4-turbo": ["gpt-4o", "claude-3-5-sonnet-20241022"],
-}
-
-MAX_RETRIES = 2
-
-# ── In-memory cost tracker (per day) ─────────────────────────────────────────
-
-_daily_costs: dict[str, dict[date, float]] = {}  # {task_name: {date: cost_usd}}
 
 
 class LLMService:
-    """Async LLM service with structured output, model routing, and cost tracking."""
+    """Async LLM service with structured output, model routing, and cost tracking.
+
+    Provider selection via settings.LLM_PROVIDER:
+      - "ollama": Uses Ollama's OpenAI-compatible API (default, free/local)
+      - "openai": Uses OpenAI's API (requires OPENAI_API_KEY)
+      - "anthropic": Uses Anthropic's API (requires ANTHROPIC_API_KEY)
+
+    For Ollama, settings.LLM_BASE_URL and settings.LLM_MODEL control the endpoint
+    and model. Defaults: http://localhost:11434/v1 and qwen3:8b.
+    """
 
     def __init__(self) -> None:
         self._openai_client = None
         self._anthropic_client = None
 
+    @property
+    def provider(self) -> str:
+        """Active LLM provider (from settings)."""
+        return settings.LLM_PROVIDER.lower()
+
+    @property
+    def default_model(self) -> str:
+        """Default model for the active provider."""
+        if self.provider == "ollama":
+            return settings.LLM_MODEL
+        elif self.provider == "anthropic":
+            return "claude-3-5-sonnet-20241022"
+        else:  # openai
+            return "gpt-4o-mini"
+
     # ── Client lazy-initialization ──────────────────────────────────────────
 
-    def _get_openai_client(self):
-        """Lazy-init the OpenAI async client."""
-        if self._openai_client is None:
-            try:
-                from openai import AsyncOpenAI
+    def _get_openai_compatible_client(self):
+        """Lazy-init an OpenAI-compatible async client.
 
-                self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            except ImportError:
-                raise ImportError("openai package is required: pip install openai>=1.0.0")
+        Works for both Ollama (http://localhost:11434/v1) and OpenAI
+        (https://api.openai.com/v1). The base_url and api_key are
+        selected based on the active provider.
+        """
+        if self._openai_client is not None:
+            return self._openai_client
+
+        try:
+            from openai import AsyncOpenAI
+        except ImportError:
+            raise ImportError("openai package is required: pip install openai>=1.0.0")
+
+        if self.provider == "ollama":
+            # Ollama serves an OpenAI-compatible API — no real API key needed,
+            # but the SDK requires *something* in the field.
+            self._openai_client = AsyncOpenAI(
+                base_url=settings.LLM_BASE_URL,
+                api_key="ollama",  # Ollama ignores API keys
+            )
+        else:
+            # OpenAI — use their official endpoint and real key
+            base_url = settings.LLM_BASE_URL or "https://api.openai.com/v1"
+            self._openai_client = AsyncOpenAI(
+                base_url=base_url,
+                api_key=settings.OPENAI_API_KEY,
+            )
         return self._openai_client
 
     def _get_anthropic_client(self):
@@ -73,7 +102,9 @@ class LLMService:
             try:
                 import anthropic
 
-                self._anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+                self._anthropic_client = anthropic.AsyncAnthropic(
+                    api_key=settings.ANTHROPIC_API_KEY,
+                )
             except ImportError:
                 raise ImportError("anthropic package is required: pip install anthropic>=0.25.0")
         return self._anthropic_client
@@ -100,7 +131,7 @@ class LLMService:
         schema : Type[BaseModel]
             Pydantic model class to validate the response against.
         model : str | None
-            Model to use.  Defaults to GPT-4o-mini.
+            Model to use. Defaults to provider's default model.
         fallback_models : list[str] | None
             Ordered list of models to try if the primary fails.
         task_name : str
@@ -122,14 +153,14 @@ class LLMService:
         ValueError
             If all models and retries fail.
         """
-        model = model or DEFAULT_MODEL
-        fallback_models = fallback_models or FALLBACK_MODELS.get(model, [])
+        model = model or self.default_model
+        fallback_models = fallback_models or []
         all_models = [model] + fallback_models
 
         last_error: Optional[Exception] = None
 
         for current_model in all_models:
-            for attempt in range(MAX_RETRIES + 1):
+            for attempt in range(3):  # MAX_RETRIES = 2 → 3 attempts
                 try:
                     result = await self._call_model(
                         model=current_model,
@@ -140,7 +171,7 @@ class LLMService:
                         max_tokens=max_tokens,
                         attempt=attempt,
                     )
-                    # Track cost
+                    # Track cost (no-op for Ollama)
                     self._track_cost(task_name, current_model, result)
                     return result
                 except ValidationError as exc:
@@ -151,8 +182,7 @@ class LLMService:
                         exc,
                     )
                     last_error = exc
-                    if attempt < MAX_RETRIES:
-                        # Re-prompt with schema correction
+                    if attempt < 2:  # retry with schema correction
                         prompt = self._add_schema_correction(prompt, schema, str(exc))
                     continue
                 except Exception as exc:
@@ -178,14 +208,18 @@ class LLMService:
         schema_json = schema.model_json_schema()
         schema_str = json.dumps(schema_json, indent=2)
 
-        if model.startswith("gpt") or model.startswith("o1") or model.startswith("o3"):
-            return await self._call_openai(model, prompt, schema, schema_str, system_prompt, temperature, max_tokens)
+        if model.startswith(("gpt", "o1", "o3")) or self.provider == "ollama":
+            # Ollama uses the OpenAI-compatible API, so all Ollama models
+            # go through the OpenAI client with custom base_url
+            return await self._call_openai_compatible(
+                model, prompt, schema, schema_str, system_prompt, temperature, max_tokens
+            )
         elif model.startswith("claude"):
             return await self._call_anthropic(model, prompt, schema, schema_str, system_prompt, temperature, max_tokens)
         else:
             raise ValueError(f"Unsupported model: {model}")
 
-    async def _call_openai(
+    async def _call_openai_compatible(
         self,
         model: str,
         prompt: str,
@@ -195,10 +229,15 @@ class LLMService:
         temperature: float,
         max_tokens: int,
     ) -> BaseModel:
-        """Call OpenAI API with structured output."""
-        client = self._get_openai_client()
+        """Call OpenAI-compatible API (works for both OpenAI and Ollama)."""
+        client = self._get_openai_compatible_client()
 
-        if not settings.OPENAI_API_KEY:
+        # For Ollama, check that the provider is set up
+        if self.provider == "ollama" and not settings.LLM_BASE_URL:
+            raise ValueError("LLM_BASE_URL not configured for Ollama")
+
+        # For OpenAI, check API key
+        if self.provider == "openai" and not settings.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY not configured")
 
         messages = []
@@ -214,19 +253,41 @@ class LLMService:
 
         messages.append({"role": "user", "content": prompt + schema_instruction})
 
-        response_format = {"type": "json_object"}
+        # Ollama models may not support response_format=json_object — only use it for OpenAI
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        if self.provider != "ollama":
+            kwargs["response_format"] = {"type": "json_object"}
 
-        response = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            response_format=response_format,
-        )
+        response = await client.chat.completions.create(**kwargs)
 
         content = response.choices[0].message.content
         if not content:
-            raise ValueError(f"Empty response from OpenAI model {model}")
+            # Ollama models sometimes return empty content with finish_reason="length"
+            # Try again with higher max_tokens
+            if response.choices[0].finish_reason == "length":
+                kwargs["max_tokens"] = max_tokens * 2
+                response = await client.chat.completions.create(**kwargs)
+                content = response.choices[0].message.content
+            if not content:
+                raise ValueError(
+                    f"Empty response from model {model} (finish_reason={response.choices[0].finish_reason})"
+                )
+
+        # Strip markdown code blocks if present (common with local models)
+        content = content.strip()
+        if content.startswith("```"):
+            # Remove opening ```json or ``` and closing ```
+            first_line_end = content.find("\n")
+            if first_line_end != -1:
+                content = content[first_line_end + 1 :]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
 
         # Parse JSON and validate against schema
         raw = json.loads(content)
@@ -316,8 +377,15 @@ class LLMService:
 
     # ── Cost tracking ──────────────────────────────────────────────────────
 
+    _daily_costs: dict[str, dict[date, float]] = {}
+
     def _track_cost(self, task_name: str, model: str, result: BaseModel) -> None:
-        """Track estimated cost for an LLM call."""
+        """Track estimated cost for an LLM call. No-op for Ollama (free)."""
+        # Skip cost tracking for Ollama models (local = free)
+        if self.provider == "ollama":
+            logger.debug("Ollama call: task=%s model=%s (no cost — local inference)", task_name, model)
+            return
+
         usage = getattr(result, "_llm_usage", None)
         if not usage:
             return
@@ -328,9 +396,9 @@ class LLMService:
         total_cost = input_cost + output_cost
 
         today = date.today()
-        if task_name not in _daily_costs:
-            _daily_costs[task_name] = {}
-        _daily_costs[task_name][today] = _daily_costs[task_name].get(today, 0.0) + total_cost
+        if task_name not in self._daily_costs:
+            self._daily_costs[task_name] = {}
+        self._daily_costs[task_name][today] = self._daily_costs[task_name].get(today, 0.0) + total_cost
 
         logger.info(
             "LLM cost: task=%s model=%s input=%d output=%d cost=$%.6f",
@@ -344,6 +412,7 @@ class LLMService:
     @staticmethod
     def get_daily_costs(task_name: Optional[str] = None) -> dict:
         """Return cost tracking data."""
+        costs = LLMService._daily_costs
         if task_name:
-            return _daily_costs.get(task_name, {})
-        return _daily_costs
+            return costs.get(task_name, {})
+        return costs

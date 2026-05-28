@@ -35,7 +35,7 @@ from app.schemas.marketing import (
     PostDraftGenerateRequest,
     PostDraftResponse,
 )
-from app.services.marketing.brand_brain import derive_brand_brain
+from app.config import settings
 from app.services.marketing.budgets import deep_merge_dict, enforce_scan_request_budget, get_marketing_settings
 from app.workers.marketing_tasks import run_audience_scan as run_audience_scan_task
 
@@ -75,13 +75,26 @@ async def brand_brain_derive(
     current_user: User = Depends(get_current_user),
     _rl=Depends(rate_limit(limit=10, window_seconds=60, scope="marketing_brand_brain")),
 ):
-    """Derive a draft Brand Brain from a website URL (SSRF-safe crawl)."""
+    """Derive a Brand Brain from a website URL (SSRF-safe crawl + LLM enhancement).
+
+    Uses the EnhancedBrandBrain to:
+    1. Crawl the website and extract keywords/product info
+    2. Use LLM to generate precise positioning, ICP, voice rules, and differentiators
+
+    Falls back to basic keyword extraction if LLM is unavailable.
+    """
+    from app.services.marketing.enhanced_brand_brain import EnhancedBrandBrain
+
     result = await db.execute(select(Team).where(Team.id == current_user.team_id))
     team = result.scalar_one_or_none()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
-    brain = await derive_brand_brain(body.website_url)
+    brain_builder = EnhancedBrandBrain()
+    brain = await brain_builder.derive(
+        website_url=body.website_url,
+        additional_context=getattr(body, "additional_context", None),
+    )
 
     if body.store:
         settings = dict(team.settings or {})
@@ -197,26 +210,6 @@ async def list_audience_signals(
     return paginated_response(items, total, params)
 
 
-def _draft_from_context(platform: str, goal: str, voice_rules: list[str], context: str, variant: int) -> str:
-    # Deterministic fallback (works without OPENAI_API_KEY). Keep it short and human.
-    base = [
-        f"Hook: {context}",
-        "",
-        f"I'm building something for {goal}.",
-        "Curious if anyone else is dealing with this — what have you tried so far?",
-    ]
-    if platform.lower() in ("reddit", "hn"):
-        base.append("")
-        base.append("Not selling here — genuinely want to learn from your experience.")
-    if voice_rules:
-        base.append("")
-        base.append(f"(Voice rules: {', '.join(voice_rules[:3])})")
-    text = "\n".join(base).strip()
-    if variant:
-        text = text.replace("Curious if anyone else is dealing with this", "Quick question for folks here")
-    return text[:4000]
-
-
 @router.post("/post-drafts/generate", response_model=dict)
 async def generate_post_drafts(
     body: PostDraftGenerateRequest,
@@ -224,26 +217,41 @@ async def generate_post_drafts(
     current_user: User = Depends(get_current_user),
     _rl=Depends(rate_limit(limit=30, window_seconds=60, scope="marketing_post_drafts")),
 ):
-    """Generate draft social posts from Brand Brain + optional AudienceSignal context."""
+    """Generate draft social posts from Brand Brain + optional AudienceSignal context.
+
+    Uses the LLM-powered MarketingPostGenerator for authentic, voice-matched content.
+    Falls back to template if the LLM is unavailable.
+    """
+    from app.services.marketing.post_generator import MarketingPostGenerator
+
     team_result = await db.execute(select(Team).where(Team.id == current_user.team_id))
     team = team_result.scalar_one_or_none()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
     marketing = get_marketing_settings(team)
-    voice_rules = list((marketing.get("brand_brain") or {}).get("voice_rules") or [])
+    brand_brain = dict(marketing.get("brand_brain") or {})
 
+    # Build audience context from signal if provided
     signal = None
+    audience_context = None
     if body.audience_signal_id:
         sres = await db.execute(select(AudienceSignal).where(AudienceSignal.id == body.audience_signal_id))
         signal = sres.scalar_one_or_none()
         if not signal or signal.team_id != current_user.team_id:
             raise HTTPException(status_code=404, detail="Audience signal not found")
-
-    context = "a common pain founders have with marketing"
-    if signal:
         parts = [signal.title or "", signal.community or ""]
-        context = sanitize_log(" — ".join([p for p in parts if p]).strip()) or context
+        audience_context = sanitize_log(" — ".join([p for p in parts if p]).strip()) or None
+
+    # Generate posts via LLM
+    generator = MarketingPostGenerator()
+    llm_posts = await generator.generate_posts(
+        platform=body.platform,
+        goal=body.goal,
+        brand_brain=brand_brain,
+        audience_context=audience_context,
+        variants=body.variants,
+    )
 
     # Usage row (draft counters)
     today = date.today()
@@ -259,16 +267,22 @@ async def generate_post_drafts(
         await db.flush()
 
     drafts: list[SocialPostDraft] = []
-    for i in range(body.variants):
-        content = _draft_from_context(body.platform, body.goal, voice_rules, context, i)
+    for post in llm_posts:
         draft = SocialPostDraft(
             team_id=current_user.team_id,
             platform=body.platform,
             goal=body.goal,
             audience_signal_id=body.audience_signal_id,
-            content=content,
-            variant=i,
-            extra={"source": "template_v1"},
+            content=post["full_text"],
+            variant=post.get("variant_index", 0),
+            extra={
+                "source": "llm",
+                "model_used": post.get("model_used", settings.LLM_MODEL),
+                "hook": post.get("hook", ""),
+                "body": post.get("body", ""),
+                "cta": post.get("cta", ""),
+                "reasoning": post.get("reasoning", ""),
+            },
         )
         db.add(draft)
         drafts.append(draft)
