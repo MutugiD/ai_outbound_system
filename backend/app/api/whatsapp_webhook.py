@@ -165,7 +165,8 @@ async def evolution_webhook(
         if not lead_id and not contact:
             logger.info(
                 "WhatsApp inbound from unknown number: phone=%s text=%.50s — no matching lead or contact, skipping reply creation",
-                sender_phone, message_text,
+                sender_phone,
+                message_text,
             )
             return {"status": "ok", "reason": "unknown_sender"}
 
