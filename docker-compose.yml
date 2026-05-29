@@ -496,6 +496,7 @@ services:
     - AUTHENTICATION_TYPE=apikey
     - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
     - LANGUAGE=en
+    - LOG_LEVEL=DEBUG
     depends_on:
       db:
         condition: service_healthy

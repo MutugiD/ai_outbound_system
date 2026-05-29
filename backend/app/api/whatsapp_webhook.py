@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -81,6 +81,7 @@ async def evolution_webhook(
                 session.paired_at = datetime.utcnow()
             db.add(session)
             await db.flush()
+            await db.commit()
         return {"status": "ok"}
 
     # ── QR code ready ───────────────────────────────────────────────
@@ -99,6 +100,7 @@ async def evolution_webhook(
             session.updated_at = datetime.utcnow()
             db.add(session)
             await db.flush()
+            await db.commit()
         return {"status": "ok"}
 
     # ── Inbound messages ─────────────────────────────────────────────
@@ -145,11 +147,48 @@ async def evolution_webhook(
                 lead_id = lead.id
 
         if not lead_id:
-            # Try matching via the phone on the lead directly
-            lead_result = await db.execute(select(Lead).where(Lead.normalized_phone == sender_phone))
-            lead = lead_result.scalar_one_or_none()
-            if lead:
-                lead_id = lead.id
+            # Try matching via the contact's normalized_phone or whatsapp_phone
+            phone_contact = await db.execute(
+                select(Contact).where(
+                    or_(Contact.normalized_phone == sender_phone, Contact.whatsapp_phone == sender_phone)
+                )
+            )
+            phone_contact_obj = phone_contact.scalar_one_or_none()
+            if phone_contact_obj and phone_contact_obj.company_id:
+                lead_result = await db.execute(select(Lead).where(Lead.company_id == phone_contact_obj.company_id))
+                lead = lead_result.scalar_one_or_none()
+                if lead:
+                    lead_id = lead.id
+
+        # Create Reply record only if we matched a lead or found a contact
+        # WhatsApp inbound from unknown numbers can't create a Reply without a lead (FK constraint)
+        if not lead_id and not contact:
+            logger.info(
+                "WhatsApp inbound from unknown number: phone=%s text=%.50s — no matching lead or contact, skipping reply creation",
+                sender_phone, message_text,
+            )
+            return {"status": "ok", "reason": "unknown_sender"}
+
+        # If we found a contact but not a lead, try to create a lead from it
+        if not lead_id and contact:
+            if contact.company_id:
+                lead_result = await db.execute(select(Lead).where(Lead.company_id == contact.company_id))
+                lead = lead_result.scalar_one_or_none()
+                if lead:
+                    lead_id = lead.id
+            if not lead_id and contact.id:
+                # Check if contact has an associated lead via contact_id
+                lead_result = await db.execute(select(Lead).where(Lead.contact_id == contact.id))
+                lead = lead_result.scalar_one_or_none()
+                if lead:
+                    lead_id = lead.id
+
+        if not lead_id:
+            logger.info(
+                "WhatsApp inbound: phone=%s has contact but no lead — skipping reply creation",
+                sender_phone,
+            )
+            return {"status": "ok", "reason": "no_lead_for_contact"}
 
         # Try to correlate with an existing outbound message
         # Look for the most recent outreach message sent to this phone
@@ -170,7 +209,7 @@ async def evolution_webhook(
 
         # Create Reply record
         reply = Reply(
-            lead_id=lead_id or uuid.UUID(int=0),
+            lead_id=lead_id,
             message_id=message_id,
             channel="whatsapp",
             subject=None,
