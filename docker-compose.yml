@@ -473,7 +473,10 @@ services:
     - miniodata:/data
     command: server /data --console-address ":9001"
   evolution-api:
-    image: atendai/evolution-api:latest
+    build:
+      context: ./evolution-api
+      dockerfile: Dockerfile
+    image: evolution-api-baileys-fix:latest
     ports:
     - 8080:8080
     environment:
