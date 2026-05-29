@@ -116,6 +116,14 @@ async def create_session(
     try:
         # Create instance in Evolution API (requires WHATSAPP-BAILEYS integration)
         await client.create_instance(body.instance_name)
+
+        # Register per-instance webhook so QR/connection/message events reach our backend
+        webhook_url = str(request.base_url).rstrip("/") + "/api/v1/webhooks/whatsapp"
+        try:
+            await client.configure_webhook(body.instance_name, webhook_url)
+        except Exception:
+            pass  # Webhook may already exist; non-fatal
+
         # Connect to trigger QR code generation
         try:
             await client.connect_instance(body.instance_name)

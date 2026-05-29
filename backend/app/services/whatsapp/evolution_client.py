@@ -47,6 +47,33 @@ class EvolutionClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def configure_webhook(self, instance_name: str, webhook_url: str) -> dict:
+        """Register a per-instance webhook so Evolution API sends events to our backend.
+
+        Without this, the global webhook may not fire QRCODE_UPDATED and other
+        events for this specific instance.
+        """
+        client = await self._get_client()
+        resp = await client.post(
+            f"/webhook/set/{instance_name}",
+            json={
+                "webhook": {
+                    "url": webhook_url,
+                    "enabled": True,
+                    "webhookByEvents": True,
+                    "events": [
+                        "APPLICATION_STARTUP",
+                        "QRCODE_UPDATED",
+                        "CONNECTION_UPDATE",
+                        "MESSAGES_UPSERT",
+                        "SEND_MESSAGE",
+                    ],
+                }
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     async def connect_instance(self, instance_name: str) -> dict:
         """Connect instance to trigger QR code generation (GET in v2.2.3)."""
         client = await self._get_client()
