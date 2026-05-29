@@ -114,14 +114,22 @@ async def create_session(
 
     client = EvolutionClient()
     try:
-        # Create instance in Evolution API
+        # Create instance in Evolution API (requires WHATSAPP-BAILEYS integration)
         await client.create_instance(body.instance_name)
-        # Connect to get QR code
-        connect_result = await client.connect_instance(body.instance_name)
+        # Connect to trigger QR code generation
+        try:
+            await client.connect_instance(body.instance_name)
+        except Exception:
+            pass  # Connection may fail initially; QR arrives via webhook
 
-        # Get QR code
-        qr_result = await client.get_qr_code(body.instance_name)
-        qr_code = qr_result.get("qrcode", qr_result.get("base64", ""))
+        # Try to get QR code immediately (may not be ready yet)
+        qr_code = None
+        try:
+            qr_result = await client.get_qr_code(body.instance_name)
+            qr_code = qr_result.get("qrcode", qr_result.get("base64", ""))
+        except Exception:
+            # QR code will arrive via webhook and be stored in DB
+            pass
 
         # Persist session in our DB
         session = WhatsAppSession(

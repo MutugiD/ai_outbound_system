@@ -38,23 +38,26 @@ class EvolutionClient:
     # ── Instance / Session ─────────────────────────────────────────────
 
     async def create_instance(self, instance_name: str) -> dict:
-        """Create a new WhatsApp instance."""
+        """Create a new WhatsApp instance (WHATSAPP-BAILEYS integration)."""
         client = await self._get_client()
-        resp = await client.post("/instance/create", json={"instanceName": instance_name})
+        resp = await client.post(
+            "/instance/create",
+            json={"instanceName": instance_name, "integration": "WHATSAPP-BAILEYS"},
+        )
         resp.raise_for_status()
         return resp.json()
 
     async def connect_instance(self, instance_name: str) -> dict:
-        """Connect instance and start QR code generation."""
+        """Connect instance to trigger QR code generation (GET in v2.2.3)."""
         client = await self._get_client()
-        resp = await client.post(f"/instance/connect/{instance_name}")
+        resp = await client.get(f"/instance/connect/{instance_name}")
         resp.raise_for_status()
         return resp.json()
 
     async def disconnect_instance(self, instance_name: str) -> dict:
-        """Disconnect and logout the instance."""
+        """Disconnect and logout the instance (DELETE in v2.2.3)."""
         client = await self._get_client()
-        resp = await client.post(f"/instance/logout/{instance_name}")
+        resp = await client.delete(f"/instance/logout/{instance_name}")
         resp.raise_for_status()
         return resp.json()
 
@@ -151,9 +154,10 @@ class EvolutionClient:
         """Check if Evolution API is running."""
         client = await self._get_client()
         try:
-            resp = await client.get("/healthcheck", timeout=5.0)
+            resp = await client.get("/", timeout=5.0)
             resp.raise_for_status()
-            return resp.json()
+            data = resp.json()
+            return {"status": "ok", "version": data.get("version", "unknown")}
         except Exception as e:
             logger.warning("Evolution API healthcheck failed: %s", e)
             return {"status": "error", "message": str(e)}

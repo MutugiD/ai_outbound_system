@@ -85,7 +85,12 @@ async def evolution_webhook(
 
     # ── QR code ready ───────────────────────────────────────────────
     if event == "qrcode.updated":
-        qr_code = payload.get("qrcode", "")
+        # QR code can be a plain base64 string or an object with "base64" key
+        raw_qr = payload.get("qrcode", "")
+        if isinstance(raw_qr, dict):
+            qr_code = raw_qr.get("base64", "")
+        else:
+            qr_code = str(raw_qr)
         session_result = await db.execute(select(WhatsAppSession).where(WhatsAppSession.instance_name == instance_name))
         session = session_result.scalar_one_or_none()
         if session:
@@ -196,12 +201,11 @@ async def evolution_webhook(
         logger.info("WhatsApp inbound: phone=%s text=%.50s reply_id=%s", sender_phone, message_text, reply.id)
         return {"status": "ok", "reply_id": str(reply.id)}
 
-    # ── Message delivery receipts ────────────────────────────────────
-    if event == "messages.upsert" and payload.get("data", {}).get("key", {}).get("fromMe"):
-        # This is a status update for a message WE sent
+    # ── Message delivery receipts (from send.message event) ────────
+    if event == "send.message":
         data = payload.get("data", {})
-        status = data.get("status", "")
         provider_msg_id = data.get("key", {}).get("id", "")
+        status_val = data.get("status", "")
 
         if provider_msg_id:
             msg_result = await db.execute(
@@ -218,7 +222,7 @@ async def evolution_webhook(
                     "read": "opened",
                     "played": "opened",
                 }
-                new_status = status_map.get(status, message.status)
+                new_status = status_map.get(status_val, message.status)
                 if new_status != message.status:
                     message.status = new_status
                     if new_status == "delivered":

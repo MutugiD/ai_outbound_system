@@ -1,504 +1,510 @@
 services:
-  # ── API Server ──────────────────────────────────────────────────────
   api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+    - 8000:8000
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
+    - EVOLUTION_API_URL=http://evolution-api:8080
+    - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   identity-api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn services.identity_service.main:app --host 0.0.0.0 --port 8001
     ports:
-      - "8001:8001"
+    - 8001:8001
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   acquisition-api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn services.acquisition_service.main:app --host 0.0.0.0 --port 8002
     ports:
-      - "8002:8002"
+    - 8002:8002
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   crm-api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn services.crm_service.main:app --host 0.0.0.0 --port 8003
     ports:
-      - "8003:8003"
+    - 8003:8003
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   intelligence-api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: uvicorn services.intelligence_service.main:app --host 0.0.0.0 --port 8004
+    command: uvicorn services.intelligence_service.main:app --host 0.0.0.0 --port
+      8004
     ports:
-      - "8004:8004"
+    - 8004:8004
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   campaign-api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn services.campaign_service.main:app --host 0.0.0.0 --port 8005
     ports:
-      - "8005:8005"
+    - 8005:8005
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   channel-api-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: uvicorn services.channel_service.main:app --host 0.0.0.0 --port 8006
     ports:
-      - "8006:8006"
+    - 8006:8006
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
+    - EVOLUTION_API_URL=http://evolution-api:8080
+    - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   worker-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.workers.celery_app worker -l info -Q scraping,enrichment,ai,outreach,inbox,marketing,default -c 4
+    command: celery -A app.workers.celery_app worker -l info -Q scraping,enrichment,ai,outreach,inbox,marketing,default
+      -c 4
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   acquisition-worker-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.workers.celery_app worker -l info -Q acquisition,default -c 2
+    command: celery -A app.workers.celery_app worker -l info -Q acquisition,default
+      -c 2
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   intelligence-worker-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.workers.celery_app worker -l info -Q intelligence,default -c 2
+    command: celery -A app.workers.celery_app worker -l info -Q intelligence,default
+      -c 2
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   campaign-worker-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.workers.celery_app worker -l info -Q campaign,default -c 2
+    command: celery -A app.workers.celery_app worker -l info -Q campaign,default -c
+      2
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   channel-worker-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: celery -A app.workers.celery_app worker -l info -Q channel,default -c 2
+    command: celery -A app.workers.celery_app worker -l info -Q channel,default -c
+      2
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
+    - EVOLUTION_API_URL=http://evolution-api:8080
+    - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   scheduler-dev:
-    profiles: ["dev"]
+    profiles:
+    - dev
     build:
       context: ./backend
       dockerfile: Dockerfile
     command: celery -A app.workers.celery_app beat -l info
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=dev-secret-key-change-in-production
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=minio
-      - S3_SECRET_KEY=minio123
-      - S3_BUCKET=outbound-os
-      - DEBUG=true
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=dev-secret-key-change-in-production
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=minio
+    - S3_SECRET_KEY=minio123
+    - S3_BUCKET=outbound-os
+    - DEBUG=true
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - ./backend:/app
-
+    - ./backend:/app
   api:
-    profiles: ["prod"]
+    profiles:
+    - prod
     image: ${BACKEND_IMAGE:-outbound-backend}:${IMAGE_TAG:-latest}
     ports:
-      - "8000:8000"
+    - 8000:8000
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
-      - S3_BUCKET=${S3_BUCKET:-outbound-os}
-      - DEBUG=false
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+    - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+    - S3_BUCKET=${S3_BUCKET:-outbound-os}
+    - DEBUG=false
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-
   worker:
-    profiles: ["prod"]
+    profiles:
+    - prod
     image: ${BACKEND_IMAGE:-outbound-backend}:${IMAGE_TAG:-latest}
-    command: celery -A app.workers.celery_app worker -l info -Q scraping,enrichment,ai,outreach,inbox,marketing,default -c 4
+    command: celery -A app.workers.celery_app worker -l info -Q scraping,enrichment,ai,outreach,inbox,marketing,default
+      -c 4
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
-      - S3_BUCKET=${S3_BUCKET:-outbound-os}
-      - DEBUG=false
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+    - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+    - S3_BUCKET=${S3_BUCKET:-outbound-os}
+    - DEBUG=false
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-
   scheduler:
-    profiles: ["prod"]
+    profiles:
+    - prod
     image: ${BACKEND_IMAGE:-outbound-backend}:${IMAGE_TAG:-latest}
     command: celery -A app.workers.celery_app beat -l info
     environment:
-      - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
-      - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
-      - S3_BUCKET=${S3_BUCKET:-outbound-os}
-      - DEBUG=false
+    - DATABASE_URL=postgresql+asyncpg://outbound:outbound@db:5432/outbound_os
+    - DATABASE_URL_SYNC=postgresql://outbound:outbound@db:5432/outbound_os
+    - REDIS_URL=redis://redis:6379/0
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+    - S3_ENDPOINT_URL=http://minio:9000
+    - S3_ACCESS_KEY=${S3_ACCESS_KEY:-minio}
+    - S3_SECRET_KEY=${S3_SECRET_KEY:-minio123}
+    - S3_BUCKET=${S3_BUCKET:-outbound-os}
+    - DEBUG=false
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-
   frontend:
-    profiles: ["prod"]
+    profiles:
+    - prod
     image: ${FRONTEND_IMAGE:-outbound-frontend}:${IMAGE_TAG:-latest}
     ports:
-      - "80:80"
+    - 80:80
     depends_on:
-      - api
-
-  # ── PostgreSQL + pgvector ──────────────────────────────────────────
+    - api
   db:
     image: pgvector/pgvector:pg16
     ports:
-      - "5432:5432"
+    - 5432:5432
     environment:
-      - POSTGRES_DB=outbound_os
-      - POSTGRES_USER=outbound
-      - POSTGRES_PASSWORD=outbound
+    - POSTGRES_DB=outbound_os
+    - POSTGRES_USER=outbound
+    - POSTGRES_PASSWORD=outbound
     volumes:
-      - pgdata:/var/lib/postgresql/data
+    - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U outbound -d outbound_os"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U outbound -d outbound_os
       interval: 5s
       timeout: 5s
       retries: 5
-
-  # ── Redis ───────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+    - 6379:6379
     volumes:
-      - redisdata:/data
-
-  # ── MinIO (S3-compatible object storage) ────────────────────────────
+    - redisdata:/data
   minio:
     image: minio/minio
     ports:
-      - "9000:9000"
-      - "9001:9001"
+    - 9000:9000
+    - 9001:9001
     environment:
-      - MINIO_ROOT_USER=minio
-      - MINIO_ROOT_PASSWORD=minio123
+    - MINIO_ROOT_USER=minio
+    - MINIO_ROOT_PASSWORD=minio123
     volumes:
-      - miniodata:/data
+    - miniodata:/data
     command: server /data --console-address ":9001"
-
-  # ── Evolution API (WhatsApp) ──────────────────────────────────────
   evolution-api:
     image: atendai/evolution-api:latest
     ports:
-      - "8080:8080"
+    - 8080:8080
     environment:
-      - SERVER_TYPE=http
-      - SERVER_PORT=8080
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://outbound:outbound@db:5432/evolution_api
-      - DATABASE_PREFIX=evolution
-      - REDIS_ENABLED=true
-      - REDIS_URI=redis://redis:6379/2
-      - REDIS_PREFIX=evolution
-      - WEBHOOK_GLOBAL_ENABLED=true
-      - WEBHOOK_GLOBAL_URL=http://api-dev:8000/api/v1/webhooks/whatsapp
-      - WEBHOOK_EVENTS_MESSAGE_UPSERT=true
-      - WEBHOOK_EVENTS_MESSAGE_UPDATE=true
-      - WEBHOOK_EVENTS_SEND_MESSAGE=true
-      - WEBHOOK_EVENTS_CONNECTION_UPDATE=true
-      - WEBHOOK_EVENTS_QR_CODE=true
-      - AUTHENTICATION_TYPE=apikey
-      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
-      - LANGUAGE=en
+    - SERVER_TYPE=http
+    - SERVER_PORT=8080
+    - DATABASE_ENABLED=true
+    - DATABASE_PROVIDER=postgresql
+    - DATABASE_CONNECTION_URI=postgresql://outbound:outbound@db:5432/evolution_api
+    - DATABASE_PREFIX=evolution
+    - REDIS_ENABLED=true
+    - REDIS_URI=redis://redis:6379/0
+    - REDIS_PREFIX=evolution
+    - WEBHOOK_GLOBAL_ENABLED=true
+    - WEBHOOK_GLOBAL_URL=http://api-dev:8000/api/v1/webhooks/whatsapp
+    - WEBHOOK_EVENTS_MESSAGE_UPSERT=true
+    - WEBHOOK_EVENTS_MESSAGE_UPDATE=true
+    - WEBHOOK_EVENTS_SEND_MESSAGE=true
+    - WEBHOOK_EVENTS_CONNECTION_UPDATE=true
+    - WEBHOOK_EVENTS_QR_CODE=true
+    - AUTHENTICATION_TYPE=apikey
+    - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
+    - LANGUAGE=en
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     volumes:
-      - evolution_store:/evolution-store
-
+    - evolution_store:/evolution-store
 volumes:
-  pgdata:
-  redisdata:
-  miniodata:
-  evolution_store:
+  pgdata: null
+  redisdata: null
+  miniodata: null
+  evolution_store: null
