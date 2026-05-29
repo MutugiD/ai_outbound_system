@@ -55,8 +55,10 @@ cd frontend && npm run build  # type-check + build
 │  └──────────┘ └──────────┘ └──────────────────┘   │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐   │
-│  │ Channel Service (WhatsApp via Evolution API)  │   │
-│  │ Outbound send, inbound webhooks, sessions    │   │
+│  │ WhatsApp Channel (in API server)             │   │
+│  │ app/api/whatsapp_sessions.py (CRUD + send)  │   │
+│  │ app/api/whatsapp_webhook.py  (inbound recv) │   │
+│  │ app/services/whatsapp/ (Evolution API client)│   │
 │  └──────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────┤
 │  Infrastructure: PostgreSQL + pgvector, Redis,      │
@@ -68,7 +70,7 @@ cd frontend && npm run build  # type-check + build
 
 - **Lead Intelligence** — CSV import, Reddit scraping, website crawling, LinkedIn sourcing. Normalization, deduplication, enrichment (Apollo, Hunter, BuiltWith), buying signal detection (20 categories), lead scoring (8 dimensions), website audit
 - **Campaign Engine** — Multi-channel outreach (email, LinkedIn, phone, WhatsApp), personalization strategies (5 types × 4 tones), message templates, response classification, follow-up automation
-- **WhatsApp Channel** — Outbound/inbound WhatsApp messaging via Evolution API (Baileys). Session management (QR code pairing), webhook-based inbound replies, delivery receipts. No official Business API required.
+- **WhatsApp Channel** — Outbound/inbound messaging via Evolution API v2.2.3 (Baileys). Session management with per-instance webhooks, QR code pairing, inbound reply webhooks, delivery receipts. No official Business API required.
 - **Auth & Security** — JWT auth with email verification, CSRF protection, security headers, rate limiting
 - **Dashboard** — KPI metrics, pipeline overview with progress bars, trend charts, activity feed
 
@@ -137,11 +139,43 @@ Copy `backend/.env.example` to `backend/.env` and fill in values. Key variables:
 # Development (infrastructure only)
 docker compose up -d db redis minio
 
-# Full stack (including WhatsApp)
-docker compose up -d db redis minio evolution-api
+# Development with WhatsApp (Evolution API)
+docker compose --profile dev up -d
+# Starts: db, redis, minio, api-dev, evolution-api, evolution-manager
 
 # Production (with Nginx frontend)
 docker compose --profile prod up -d
+```
+
+Evolution API (WhatsApp) runs in the `dev` profile. Evolution Manager UI
+is available at http://localhost:8080/manager (API key from
+`EVOLUTION_API_KEY` in `.env`).
+
+### WhatsApp Quick-Start
+
+```bash
+# 1. Start infrastructure + Evolution API
+docker compose --profile dev up -d
+
+# 2. Create the evolution_api database (first time only)
+docker compose exec db psql -U outbound -c "CREATE DATABASE evolution_api;"
+
+# 3. Verify Evolution API is running (health endpoint is GET /, NOT /healthcheck)
+curl http://localhost:8080/
+
+# 4. Create a session via our API (or use Evolution Manager at http://localhost:8080/manager)
+curl -X POST http://localhost:8000/api/v1/channel/whatsapp/sessions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"instance_name": "test-1"}'
+
+# 5. Scan the QR code with WhatsApp on your phone
+# QR code is returned in the response and also available at:
+curl http://localhost:8000/api/v1/channel/whatsapp/sessions/{id}/qr \
+  -H "Authorization: Bearer $TOKEN"
+
+# NOTE: Per-instance webhook is auto-configured on session creation.
+# If QR code doesn't appear, ensure evolution-api is healthy and retry.
 ```
 
 ## Versioning, Deployments, Rollback
