@@ -97,6 +97,7 @@ async def whatsapp_health():
 
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
 async def create_session(
+    request: Request,
     body: SessionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
