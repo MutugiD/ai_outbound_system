@@ -499,7 +499,8 @@ services:
     - AUTHENTICATION_TYPE=apikey
     - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-outbound-os-evolution-key}
     - LANGUAGE=en
-    - LOG_LEVEL=DEBUG
+    - LOG_LEVEL=DEBUG,LOG
+    - CONFIG_SESSION_PHONE_VERSION=2.3000.1035194821
     depends_on:
       db:
         condition: service_healthy
